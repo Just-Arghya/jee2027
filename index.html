@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE Main 2027 - Multiplayer 99+ Command Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Gun.js Decentralized Real-Time Sync for Multiplayer Rooms -->
+    <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0b0f19; color: #e2e8f0; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .glass { background: rgba(17, 24, 39, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #111827; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+        input[type="checkbox"] { accent-color: #10b981; width: 1.1rem; height: 1.1rem; cursor: pointer; }
+        .tab-active { border-bottom: 2px solid #38bdf8; color: #38bdf8; font-weight: 600; }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .live-dot { animation: pulse-dot 2s infinite; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-sky-500 selection:text-white">
+
+    <!-- Top Navigation & Live Countdowns -->
+    <header class="glass sticky top-0 z-50 border-b border-gray-800 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center font-extrabold text-xl shadow-lg shadow-sky-500/20">99+</div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg font-bold tracking-tight text-white">JEE MAIN 2027 COMMAND CENTER</h1>
+                        <span class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span>
+                            Room: <span id="header-room-id" class="mono">GLOBAL</span>
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-400">Target: 22 Jan 2027 (200+ Marks) • Multiplayer Competitor Tracker</p>
+                </div>
+            </div>
+
+            <!-- User Profile, Invite Link & Countdown -->
+            <div class="flex flex-wrap gap-3 items-center">
+                <!-- Player Profile Quick Edit -->
+                <div class="bg-gray-900/90 border border-gray-700/80 rounded-lg px-3 py-1.5 flex items-center gap-2">
+                    <span class="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Player:</span>
+                    <input id="player-name-input" type="text" onchange="updatePlayerProfile()" placeholder="Your Name" class="bg-transparent text-xs font-bold text-sky-400 focus:outline-none w-28 border-b border-transparent focus:border-sky-500">
+                </div>
+
+                <!-- Invite Competitors Button -->
+                <button onclick="copyInviteLink()" id="invite-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3.5 py-2.5 rounded-lg shadow-lg shadow-indigo-600/20 transition flex items-center gap-1.5">
+                    <span>🔗 Copy Invite Link</span>
+                </button>
+
+                <!-- JEE Exam Countdown -->
+                <div class="bg-rose-500/10 border border-rose-500/30 rounded-lg px-4 py-1.5 text-center">
+                    <span class="text-[10px] uppercase tracking-wider text-rose-400 font-semibold block">JEE Main Exam (Jan 22)</span>
+                    <span id="exam-timer" class="mono text-base font-bold text-rose-300">--d : --h : --m</span>
+                </div>
+
+                <button onclick="exportData()" class="bg-gray-800 hover:bg-gray-700 text-xs px-3 py-2.5 rounded-lg border border-gray-700 transition" title="Backup Progress">Backup JSON</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex-grow flex flex-col gap-6">
+
+        <!-- Overall Progress & Pace Analytics Bar -->
+        <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="glass p-4 rounded-xl flex flex-col justify-between">
+                <span class="text-xs text-gray-400 font-medium">YOUR SYLLABUS CLEARED</span>
+                <div class="flex items-baseline justify-between mt-2">
+                    <span id="overall-pct" class="mono text-3xl font-extrabold text-emerald-400">0%</span>
+                    <span id="overall-count" class="text-xs text-gray-400">0 / 0 Tasks</span>
+                </div>
+                <div class="w-full bg-gray-800 h-2 rounded-full mt-3 overflow-hidden">
+                    <div id="overall-bar" class="bg-emerald-500 h-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="glass p-4 rounded-xl flex flex-col justify-between">
+                <span class="text-xs text-gray-400 font-medium">SUBJECT MASTERY BREAKDOWN</span>
+                <div class="grid grid-cols-3 gap-2 mt-2 text-center">
+                    <div class="bg-gray-900/70 rounded p-1.5 border border-sky-500/20">
+                        <span class="text-[10px] text-sky-400 block font-semibold">PHYS</span>
+                        <span id="stat-p-pct" class="mono text-sm font-bold text-white">0%</span>
+                    </div>
+                    <div class="bg-gray-900/70 rounded p-1.5 border border-emerald-500/20">
+                        <span class="text-[10px] text-emerald-400 block font-semibold">CHEM</span>
+                        <span id="stat-c-pct" class="mono text-sm font-bold text-white">0%</span>
+                    </div>
+                    <div class="bg-gray-900/70 rounded p-1.5 border border-amber-500/20">
+                        <span class="text-[10px] text-amber-400 block font-semibold">MATH</span>
+                        <span id="stat-m-pct" class="mono text-sm font-bold text-white">0%</span>
+                    </div>
+                </div>
+                <p id="chapters-left" class="text-[11px] text-gray-400 mt-2">-- Chapters Fully Locked</p>
+            </div>
+
+            <div class="glass p-4 rounded-xl flex flex-col justify-between">
+                <span class="text-xs text-gray-400 font-medium">YOUR MOCK TEST TRACKER</span>
+                <div class="flex items-baseline justify-between mt-2">
+                    <span id="mock-avg" class="mono text-2xl font-bold text-purple-400">0.0</span>
+                    <span id="mock-count" class="text-xs text-gray-400">0 Mocks Logged</span>
+                </div>
+                <p class="text-[11px] text-gray-400 mt-2">99%ile Safe Score: <strong class="text-gray-200">195 - 210+ / 300</strong></p>
+            </div>
+
+            <!-- Built-in Focus Pomodoro / Mock Timer -->
+            <div class="glass p-4 rounded-xl flex flex-col justify-between border border-sky-500/20">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-sky-400 font-semibold uppercase">Study / Mock Timer</span>
+                    <select id="timer-mode" onchange="resetStudyTimer()" class="bg-gray-900 text-xs border border-gray-700 rounded px-1.5 py-0.5 text-gray-300">
+                        <option value="5400">90m Deep Block</option>
+                        <option value="10800">180m Full Mock</option>
+                        <option value="3000">50m PYQ Sprint</option>
+                    </select>
+                </div>
+                <div class="flex items-center justify-between mt-2">
+                    <span id="study-timer-display" class="mono text-2xl font-extrabold text-white">90:00</span>
+                    <div class="flex gap-1.5">
+                        <button onclick="toggleStudyTimer()" id="timer-btn" class="bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold px-3 py-1.5 rounded transition">Start</button>
+                        <button onclick="resetStudyTimer()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs px-2.5 py-1.5 rounded transition">Reset</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Navigation Tabs -->
+        <nav class="flex border-b border-gray-800 gap-6 text-sm overflow-x-auto">
+            <button onclick="switchTab('tab-syllabus')" id="btn-tab-syllabus" class="pb-3 tab-active transition whitespace-nowrap">1. Syllabus Tracker</button>
+            <button onclick="switchTab('tab-leaderboard')" id="btn-tab-leaderboard" class="pb-3 text-gray-400 hover:text-gray-200 transition whitespace-nowrap flex items-center gap-2">
+                <span>2. Competitor Arena (Live Leaderboard)</span>
+                <span id="competitor-count-badge" class="bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 text-[10px] mono px-1.5 py-0.5 rounded-full">1</span>
+            </button>
+            <button onclick="switchTab('tab-mocks')" id="btn-tab-mocks" class="pb-3 text-gray-400 hover:text-gray-200 transition whitespace-nowrap">3. Mock Test Engine</button>
+            <button onclick="switchTab('tab-daily')" id="btn-tab-daily" class="pb-3 text-gray-400 hover:text-gray-200 transition whitespace-nowrap">4. Daily Grind & PYQ Planner</button>
+        </nav>
+
+        <!-- TAB 1: SYLLABUS SPRINT -->
+        <section id="tab-syllabus" class="space-y-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-900/60 p-4 rounded-xl border border-gray-800">
+                <div>
+                    <h2 class="text-base font-bold text-white">High-Yield Syllabus & Revision Matrix</h2>
+                    <p class="text-xs text-gray-400">Check off <strong class="text-gray-200">Theory Revision</strong>, <strong class="text-gray-200">2019–2026 PYQs</strong>, and <strong class="text-gray-200">Selected Reference Problems</strong>. Every box you check automatically updates your live rank in the Competitor Arena!</p>
+                </div>
+                <div class="flex gap-2">
+                    <select id="filter-priority" onchange="renderSyllabus()" class="bg-gray-800 text-xs border border-gray-700 rounded-lg px-3 py-2 text-gray-200">
+                        <option value="ALL">All Priorities</option>
+                        <option value="HIGH">High Priority (Tier 1)</option>
+                        <option value="MED">Medium Priority (Tier 2)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="syllabus-container">
+                <!-- Populated by JS: Physics, Chemistry, Mathematics -->
+            </div>
+        </section>
+
+        <!-- TAB 2: MULTIPLAYER COMPETITOR ARENA -->
+        <section id="tab-leaderboard" class="hidden space-y-6">
+            <!-- Room Controls & Invite Banner -->
+            <div class="glass p-5 rounded-xl border border-indigo-500/30 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-indigo-400">Multiplayer Squad Room</span>
+                        <span id="sync-status" class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">Live Cloud Sync Active</span>
+                    </div>
+                    <h2 class="text-lg font-bold text-white">Compete on Syllabus Completion & Mock Test Numbers</h2>
+                    <p class="text-xs text-gray-400">Share your invite link with friends. Anyone with the link joins this room and their syllabus % and mock test stats sync live.</p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                    <div class="flex items-center bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+                        <span class="text-xs text-gray-400 px-3 py-2 bg-gray-800/60 border-r border-gray-700">Room Code</span>
+                        <input id="room-code-input" type="text" class="bg-transparent text-xs mono font-bold text-white px-3 py-2 w-32 focus:outline-none uppercase" placeholder="JEE2027-99">
+                        <button onclick="changeRoom()" class="bg-gray-800 hover:bg-gray-700 text-sky-400 text-xs font-semibold px-3 py-2 transition">Join/Switch</button>
+                    </div>
+                    <button onclick="copyInviteLink()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">
+                        🔗 Copy Room Invite Link
+                    </button>
+                    <button onclick="broadcastMyStats()" class="bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs px-3 py-2 rounded-lg border border-gray-700 transition" title="Force push your latest stats">
+                        ↻ Sync Now
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Live Competitor Leaderboard Table -->
+                <div class="lg:col-span-2 glass p-5 rounded-xl space-y-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="text-base font-bold text-white">Squad Standings (Syllabus & Mock Numbers)</h3>
+                            <p class="text-xs text-gray-400">Ranked by Syllabus Completion % and Mock Test Performance</p>
+                        </div>
+                        <select id="leaderboard-sort" onchange="renderLeaderboard()" class="bg-gray-900 text-xs border border-gray-700 rounded-lg px-2.5 py-1.5 text-gray-300">
+                            <option value="syllabus">Sort by: Syllabus %</option>
+                            <option value="mockAvg">Sort by: Mock Average</option>
+                            <option value="mockCount">Sort by: Total Mocks Given</option>
+                            <option value="mockBest">Sort by: Highest Mock Score</option>
+                        </select>
+                    </div>
+
+                    <div class="overflow-x-auto custom-scroll">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="border-b border-gray-800 text-gray-400 uppercase">
+                                    <th class="py-3 px-2">#</th>
+                                    <th class="py-3 px-2">Student</th>
+                                    <th class="py-3 px-2">Syllabus Progression</th>
+                                    <th class="py-3 px-2 text-center">P / C / M</th>
+                                    <th class="py-3 px-2 text-center">Mocks Given</th>
+                                    <th class="py-3 px-2 text-center">Avg Score</th>
+                                    <th class="py-3 px-2 text-center">Best Mock</th>
+                                    <th class="py-3 px-2 text-right">Updated</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leaderboard-body" class="divide-y divide-gray-800/60">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Live Competitor Mock Test Feed & Manual Snapshot Card -->
+                <div class="space-y-6">
+                    <!-- Competitor Recent Mocks Feed -->
+                    <div class="glass p-5 rounded-xl space-y-3 border border-purple-500/20">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wider">Recent Squad Mock Scores</h3>
+                            <span class="text-[10px] text-gray-400">Latest Attempted</span>
+                        </div>
+                        <div id="squad-mock-feed" class="space-y-2.5 max-h-72 overflow-y-auto custom-scroll pr-1">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Offline / WhatsApp Snapshot Code Importer (Fallback if firewall blocks WebSockets) -->
+                    <div class="glass p-4 rounded-xl space-y-3 border border-gray-800">
+                        <h4 class="text-xs font-bold text-gray-300 uppercase">Instant Snapshot Share (Offline / WhatsApp Backup)</h4>
+                        <p class="text-[11px] text-gray-400">If a friend is on a restricted network, you can also copy your stat code or paste theirs below:</p>
+                        <div class="flex gap-2">
+                            <button onclick="copySnapshotCode()" class="w-1/2 bg-gray-800 hover:bg-gray-700 text-xs text-sky-400 font-semibold py-2 px-3 rounded-lg border border-gray-700 transition">Copy My Stat Code</button>
+                            <button onclick="importSnapshotPrompt()" class="w-1/2 bg-gray-800 hover:bg-gray-700 text-xs text-emerald-400 font-semibold py-2 px-3 rounded-lg border border-gray-700 transition">Paste Friend's Code</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: 10 MOCKS/WEEK ENGINE -->
+        <section id="tab-mocks" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Log New Mock Form -->
+                <div class="glass p-5 rounded-xl space-y-4">
+                    <h2 class="text-base font-bold text-white">Log Full-Length Mock Test</h2>
+                    <p class="text-xs text-gray-400">Logging a mock automatically broadcasts your new Mock Count, Average, and Latest Score to your Squad Leaderboard.</p>
+
+                    <div class="space-y-3 text-xs">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-gray-400 block mb-1">Date</label>
+                                <input type="date" id="mock-date" class="w-full bg-gray-900 border border-gray-700 rounded px-2.5 py-2 text-white">
+                            </div>
+                            <div>
+                                <label class="text-gray-400 block mb-1">Paper / Test Number</label>
+                                <input type="text" id="mock-name" placeholder="e.g., Mock #14 (Allen/Mathongo)" class="w-full bg-gray-900 border border-gray-700 rounded px-2.5 py-2 text-white">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="text-sky-400 block mb-1">Physics (/100)</label>
+                                <input type="number" id="mock-p" min="-25" max="100" placeholder="75" class="w-full bg-gray-900 border border-gray-700 rounded px-2.5 py-2 text-white mono">
+                            </div>
+                            <div>
+                                <label class="text-emerald-400 block mb-1">Chem (/100)</label>
+                                <input type="number" id="mock-c" min="-25" max="100" placeholder="80" class="w-full bg-gray-900 border border-gray-700 rounded px-2.5 py-2 text-white mono">
+                            </div>
+                            <div>
+                                <label class="text-amber-400 block mb-1">Math (/100)</label>
+                                <input type="number" id="mock-m" min="-25" max="100" placeholder="55" class="w-full bg-gray-900 border border-gray-700 rounded px-2.5 py-2 text-white mono">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-gray-400 block mb-1">Weak Chapters / Silly Mistakes To Fix</label>
+                            <textarea id="mock-notes" rows="2" placeholder="e.g., Missed sign in Ray Optics lens formula; revise Coordination Compounds isomerism..." class="w-full bg-gray-900 border border-gray-700 rounded px-2.5 py-2 text-white"></textarea>
+                        </div>
+
+                        <button onclick="addMockScore()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold py-2.5 rounded-lg transition">Save & Broadcast Mock Result</button>
+                    </div>
+                </div>
+
+                <!-- Mock Analytics & History Table -->
+                <div class="lg:col-span-2 glass p-5 rounded-xl flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <h2 class="text-base font-bold text-white">Your Mock Test Performance Log</h2>
+                            <span class="text-xs px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">Target: 200+ Marks (99+ %ile)</span>
+                        </div>
+
+                        <div class="overflow-x-auto max-h-96 custom-scroll">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="border-b border-gray-800 text-gray-400 uppercase">
+                                        <th class="py-2.5 px-2">Date</th>
+                                        <th class="py-2.5 px-2">Test Name</th>
+                                        <th class="py-2.5 px-2 text-sky-400">P</th>
+                                        <th class="py-2.5 px-2 text-emerald-400">C</th>
+                                        <th class="py-2.5 px-2 text-amber-400">M</th>
+                                        <th class="py-2.5 px-2">Total</th>
+                                        <th class="py-2.5 px-2">Est. %ile</th>
+                                        <th class="py-2.5 px-2">Error Post-Mortem</th>
+                                        <th class="py-2.5 px-2"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mock-table-body" class="divide-y divide-gray-800/60">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: DAILY GRIND & PYQ PLANNER -->
+        <section id="tab-daily" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Daily Task Queue -->
+                <div class="lg:col-span-2 glass p-5 rounded-xl space-y-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 class="text-base font-bold text-white">Today's Target Queue</h2>
+                            <p class="text-xs text-gray-400">Break down your daily chapter targets and PYQ sprints.</p>
+                        </div>
+                        <button onclick="clearCompletedDaily()" class="text-xs text-rose-400 hover:underline">Clear Completed</button>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <input type="text" id="daily-input" placeholder="e.g., Electrostatics: Revise Short Notes + 50 JEE Main PYQs..." class="flex-grow bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
+                        <select id="daily-tag" class="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-300">
+                            <option value="Physics">Physics</option>
+                            <option value="Chemistry">Chemistry</option>
+                            <option value="Math">Math</option>
+                            <option value="Mock/Analysis">Mock/Analysis</option>
+                        </select>
+                        <button onclick="addDailyTask()" class="bg-sky-600 hover:bg-sky-500 text-white font-semibold px-4 py-2 rounded-lg text-sm transition">Add</button>
+                    </div>
+
+                    <ul id="daily-list" class="space-y-2 max-h-96 overflow-y-auto custom-scroll pr-1"></ul>
+                </div>
+
+                <!-- Recommended Daily Blueprint -->
+                <div class="glass p-5 rounded-xl space-y-4 border border-indigo-500/20">
+                    <h3 class="text-base font-bold text-indigo-400">Daily Execution Architecture</h3>
+                    
+                    <div class="space-y-3 text-xs">
+                        <div class="p-3 bg-gray-900/80 rounded-lg border border-gray-800">
+                            <span class="font-bold text-amber-400 block mb-1">MODE A: SYLLABUS & PYQ MASTERY</span>
+                            <ul class="space-y-1.5 text-gray-300 list-disc pl-4">
+                                <li><strong>Slot 1 (3.5 hrs):</strong> Physics Ch. Theory + 45 Selected PYQs (2021-2026).</li>
+                                <li><strong>Slot 2 (3.5 hrs):</strong> Math Ch. Concept Review + 40 Timed PYQs/Single-choice problems.</li>
+                                <li><strong>Slot 3 (3.5 hrs):</strong> Chemistry Mechanism/NCERT Line-by-Line + 60 PYQs.</li>
+                                <li><strong>Night (1.5 hrs):</strong> Formula & Reaction Sheet active recall + Mistake Log review.</li>
+                            </ul>
+                        </div>
+
+                        <div class="p-3 bg-gray-900/80 rounded-lg border border-gray-800">
+                            <span class="font-bold text-rose-400 block mb-1">MODE B: HIGH-FREQUENCY MOCK SPRINT</span>
+                            <p class="text-gray-400 mb-2">Strict fatigue management so analysis is never skipped:</p>
+                            <ul class="space-y-1.5 text-gray-300 list-disc pl-4">
+                                <li><strong>Dual-Mock Days:</strong>
+                                    <br>• 9:00 AM – 12:00 PM: Mock #1 (Morning Shift Simulation)
+                                    <br>• 2:00 PM – 5:00 PM: Mock #2 (Afternoon Shift Simulation)
+                                    <br>• 6:30 PM – 10:30 PM: Deep Error Analysis of both papers.
+                                </li>
+                                <li><strong>Single-Mock Days:</strong>
+                                    <br>• 9:00 AM – 12:00 PM: 1 Full Mock
+                                    <br>• Rest of Day: Targeted Weak-Topic patching & NCERT revision.
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // --- 1. COMPLETE JEE MAIN SYLLABUS DATA ---
+        const DEFAULT_SYLLABUS = {
+            Physics: [
+                { id: "p1", name: "Electrostatics & Capacitors", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "p2", name: "Current Electricity", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "p3", name: "Moving Charges & Magnetism", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "p4", name: "EMI & Alternating Current", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "p5", name: "Ray & Wave Optics", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "p6", name: "Modern Physics & Semiconductors", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "p7", name: "Thermodynamics & KTG", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "p8", name: "Kinematics & Laws of Motion", p: "MED", t: false, pyq: false, adv: false },
+                { id: "p9", name: "Work, Power, Energy & Circular", p: "MED", t: false, pyq: false, adv: false },
+                { id: "p10", name: "Center of Mass & Rotational Motion", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "p11", name: "Gravitation", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "p12", name: "Properties of Solids & Fluids", p: "MED", t: false, pyq: false, adv: false },
+                { id: "p13", name: "SHM & Waves", p: "MED", t: false, pyq: false, adv: false },
+                { id: "p14", name: "Units, Dimensions & EM Waves", p: "HIGH", t: false, pyq: false, adv: false }
+            ],
+            Chemistry: [
+                { id: "c1", name: "GOC & Isomerism", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "c2", name: "Hydrocarbons & Haloalkanes", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "c3", name: "Alcohols, Phenols, Ethers & Carbonyls", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "c4", name: "Amines & Biomolecules", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "c5", name: "Chemical Bonding & Molecular Structure", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "c6", name: "Coordination Compounds", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "c7", name: "d & f Block Elements", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "c8", name: "Periodic Table & p-Block (NCERT)", p: "MED", t: false, pyq: false, adv: false },
+                { id: "c9", name: "Electrochemistry & Redox", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "c10", name: "Chemical Kinetics", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "c11", name: "Solutions & Colligative Properties", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "c12", name: "Thermodynamics & Thermochemistry", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "c13", name: "Mole Concept & Atomic Structure", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "c14", name: "Chemical & Ionic Equilibrium", p: "MED", t: false, pyq: false, adv: false },
+                { id: "c15", name: "Practical Organic & Salt Analysis", p: "MED", t: false, pyq: false, adv: false }
+            ],
+            Mathematics: [
+                { id: "m1", name: "Vectors & 3D Geometry", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "m2", name: "Matrices & Determinants", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "m3", name: "Definite Integration & Area", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "m4", name: "Differential Equations", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "m5", name: "Functions, Limits, Continuity & Diff.", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "m6", name: "Application of Derivatives (AOD)", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "m7", name: "Sequences & Series", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "m8", name: "Binomial Theorem", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "m9", name: "Permutations, Combinations & Probability", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "m10", name: "Straight Lines & Circles", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "m11", name: "Conic Sections (Parabola, Ellipse, Hyperbola)", p: "MED", t: false, pyq: false, adv: false },
+                { id: "m12", name: "Complex Numbers & Quadratic Eq.", p: "MED", t: false, pyq: false, adv: false },
+                { id: "m13", name: "Sets, Relations & Statistics", p: "HIGH", t: false, pyq: false, adv: false },
+                { id: "m14", name: "Trigonometry & Indefinite Integration", p: "MED", t: false, pyq: false, adv: false }
+            ]
+        };
+
+        // --- 2. STATE & MULTIPLAYER IDENTITY MANAGEMENT ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomFromUrl = urlParams.get('room');
+
+        let state = JSON.parse(localStorage.getItem('jee2027_command_state')) || {
+            playerId: 'usr_' + Math.random().toString(36).substring(2, 10),
+            playerName: 'Aspirant_' + Math.floor(100 + Math.random() * 899),
+            roomCode: roomFromUrl ? roomFromUrl.toUpperCase() : 'JEE2027-SQUAD',
+            syllabus: DEFAULT_SYLLABUS,
+            dailyTasks: [
+                { id: 1, text: "Electrostatics: Revise Formula Sheet + Solve 40 JEE Main PYQs (2022-2026)", tag: "Physics", done: false },
+                { id: 2, text: "Vectors & 3D: Complete Theory Notes + 35 PYQs", tag: "Math", done: false },
+                { id: 3, text: "GOC & Isomerism: Mechanism Revision + 50 PYQs", tag: "Chemistry", done: false }
+            ],
+            mocks: [],
+            competitors: {}
+        };
+
+        // Ensure fields exist for users upgrading from older version
+        if (!state.playerId) state.playerId = 'usr_' + Math.random().toString(36).substring(2, 10);
+        if (!state.playerName) state.playerName = 'Aspirant_' + Math.floor(100 + Math.random() * 899);
+        if (roomFromUrl) state.roomCode = roomFromUrl.toUpperCase();
+        if (!state.roomCode) state.roomCode = 'JEE2027-SQUAD';
+        if (!state.competitors) state.competitors = {};
+
+        // Check if URL has an embedded snapshot payload (?import=...)
+        const importParam = urlParams.get('import');
+        if (importParam) {
+            try {
+                const decoded = JSON.parse(atob(decodeURIComponent(importParam)));
+                if (decoded && decoded.id) {
+                    state.competitors[decoded.id] = decoded;
+                }
+            } catch (e) { console.warn("Invalid import payload"); }
+        }
+
+        function saveState() {
+            localStorage.setItem('jee2027_command_state', JSON.stringify(state));
+            updateDashboardMetrics();
+            broadcastMyStats();
+        }
+
+        // --- 3. REAL-TIME MULTIPLAYER ENGINE (GUN.JS DECENTRALIZED RELAY) ---
+        let gun = null;
+        let gunRoomNode = null;
+
+        function initMultiplayerRoom() {
+            document.getElementById('header-room-id').innerText = state.roomCode;
+            document.getElementById('room-code-input').value = state.roomCode;
+            document.getElementById('player-name-input').value = state.playerName;
+
+            // Update URL query parameter without reloading so copying browser URL also works
+            try {
+                const newUrl = `${window.location.pathname}?room=${encodeURIComponent(state.roomCode)}`;
+                window.history.replaceState({}, '', newUrl);
+            } catch (e) {}
+
+            try {
+                if (!gun) {
+                    gun = Gun({
+                        peers: [
+                            'https://gun-manhattan.herokuapp.com/gun',
+                            'https://relay.peer.ooo/gun',
+                            'https://peer.wallie.io/gun'
+                        ],
+                        localStorage: false
+                    });
+                }
+
+                gunRoomNode = gun.get('jee2027_command_center_v2_' + state.roomCode).get('players');
+
+                // Subscribe to all competitors in this room
+                gunRoomNode.map().on((data, id) => {
+                    if (!data || !data.name) return;
+                    state.competitors[id] = {
+                        id: id,
+                        name: data.name,
+                        overallPct: Number(data.overallPct) || 0,
+                        pPct: Number(data.pPct) || 0,
+                        cPct: Number(data.cPct) || 0,
+                        mPct: Number(data.mPct) || 0,
+                        mockCount: Number(data.mockCount) || 0,
+                        mockAvg: Number(data.mockAvg) || 0,
+                        mockBest: Number(data.mockBest) || 0,
+                        lastMockName: data.lastMockName || '-',
+                        lastMockScore: Number(data.lastMockScore) || 0,
+                        lastMockP: Number(data.lastMockP) || 0,
+                        lastMockC: Number(data.lastMockC) || 0,
+                        lastMockM: Number(data.lastMockM) || 0,
+                        updatedAt: Number(data.updatedAt) || Date.now()
+                    };
+                    localStorage.setItem('jee2027_command_state', JSON.stringify(state));
+                    renderLeaderboard();
+                });
+
+                broadcastMyStats();
+            } catch (err) {
+                console.warn("Cloud relay fallback mode:", err);
+                document.getElementById('sync-status').innerText = "Local + Snapshot Mode";
+            }
+            renderLeaderboard();
+        }
+
+        function computeMyStatsPayload() {
+            const subPct = (sub) => {
+                const list = state.syllabus[sub];
+                const total = list.length * 3;
+                const done = list.reduce((a, c) => a + (c.t ? 1 : 0) + (c.pyq ? 1 : 0) + (c.adv ? 1 : 0), 0);
+                return Math.round((done / total) * 100) || 0;
+            };
+
+            const pPct = subPct('Physics');
+            const cPct = subPct('Chemistry');
+            const mPct = subPct('Mathematics');
+
+            let totalTasks = 0, completedTasks = 0;
+            Object.keys(state.syllabus).forEach(sub => {
+                state.syllabus[sub].forEach(ch => {
+                    totalTasks += 3;
+                    completedTasks += (ch.t ? 1 : 0) + (ch.pyq ? 1 : 0) + (ch.adv ? 1 : 0);
+                });
+            });
+            const overallPct = Math.round((completedTasks / totalTasks) * 100) || 0;
+
+            const mockCount = state.mocks.length;
+            const mockAvg = mockCount > 0 ? Number((state.mocks.reduce((a, m) => a + m.total, 0) / mockCount).toFixed(1)) : 0;
+            const mockBest = mockCount > 0 ? Math.max(...state.mocks.map(m => m.total)) : 0;
+            const latestMock = mockCount > 0 ? state.mocks[0] : null;
+
+            return {
+                id: state.playerId,
+                name: state.playerName,
+                overallPct,
+                pPct,
+                cPct,
+                mPct,
+                mockCount,
+                mockAvg,
+                mockBest,
+                lastMockName: latestMock ? latestMock.name : 'No Mocks Yet',
+                lastMockScore: latestMock ? latestMock.total : 0,
+                lastMockP: latestMock ? latestMock.p : 0,
+                lastMockC: latestMock ? latestMock.c : 0,
+                lastMockM: latestMock ? latestMock.m : 0,
+                updatedAt: Date.now()
+            };
+        }
+
+        function broadcastMyStats() {
+            const myPayload = computeMyStatsPayload();
+            state.competitors[state.playerId] = myPayload;
+            if (gunRoomNode) {
+                try {
+                    gunRoomNode.get(state.playerId).put(myPayload);
+                } catch (e) {}
+            }
+            renderLeaderboard();
+        }
+
+        function updatePlayerProfile() {
+            const nameInput = document.getElementById('player-name-input').value.trim();
+            if (nameInput) {
+                state.playerName = nameInput;
+                saveState();
+            }
+        }
+
+        function changeRoom() {
+            const newRoom = document.getElementById('room-code-input').value.trim().toUpperCase();
+            if (!newRoom) return;
+            state.roomCode = newRoom;
+            state.competitors = {};
+            saveState();
+            initMultiplayerRoom();
+        }
+
+        function copyInviteLink() {
+            const myStats = computeMyStatsPayload();
+            const encodedSnapshot = encodeURIComponent(btoa(JSON.stringify(myStats)));
+            const baseUrl = window.location.href.split('?')[0];
+            const shareUrl = `${baseUrl}?room=${encodeURIComponent(state.roomCode)}&import=${encodedSnapshot}`;
+
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                const btn = document.getElementById('invite-btn');
+                const oldText = btn.innerHTML;
+                btn.innerHTML = `<span>✅ Invite Link Copied!</span>`;
+                setTimeout(() => { btn.innerHTML = oldText; }, 2500);
+            }).catch(() => {
+                prompt("Copy this link and send it to your friends:", shareUrl);
+            });
+        }
+
+        function copySnapshotCode() {
+            const code = btoa(JSON.stringify(computeMyStatsPayload()));
+            navigator.clipboard.writeText(code).then(() => {
+                alert("Your Stat Snapshot Code is copied! Send it to your friends on WhatsApp/Discord.");
+            });
+        }
+
+        function importSnapshotPrompt() {
+            const code = prompt("Paste your friend's Stat Snapshot Code here:");
+            if (!code) return;
+            try {
+                const data = JSON.parse(atob(code.trim()));
+                if (data && data.id && data.name) {
+                    state.competitors[data.id] = data;
+                    saveState();
+                    renderLeaderboard();
+                    alert(`Added/Updated ${data.name} (${data.overallPct}% Syllabus, ${data.mockCount} Mocks)!`);
+                }
+            } catch (e) {
+                alert("Invalid Snapshot Code.");
+            }
+        }
+
+        function renderLeaderboard() {
+            const tbody = document.getElementById('leaderboard-body');
+            const feed = document.getElementById('squad-mock-feed');
+            if (!tbody || !feed) return;
+
+            // Ensure current user is always up to date in competitors map
+            state.competitors[state.playerId] = computeMyStatsPayload();
+
+            const sortField = document.getElementById('leaderboard-sort')?.value || 'syllabus';
+            const players = Object.values(state.competitors);
+
+            document.getElementById('competitor-count-badge').innerText = players.length;
+
+            players.sort((a, b) => {
+                if (sortField === 'mockAvg') return (b.mockAvg - a.mockAvg) || (b.overallPct - a.overallPct);
+                if (sortField === 'mockCount') return (b.mockCount - a.mockCount) || (b.mockAvg - a.mockAvg);
+                if (sortField === 'mockBest') return (b.mockBest - a.mockBest) || (b.mockAvg - a.mockAvg);
+                return (b.overallPct - a.overallPct) || (b.mockAvg - a.mockAvg);
+            });
+
+            tbody.innerHTML = players.map((p, idx) => {
+                const isMe = p.id === state.playerId;
+                const rankBadge = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`;
+                const minsAgo = Math.max(0, Math.floor((Date.now() - (p.updatedAt || Date.now())) / 60000));
+                const timeStr = minsAgo === 0 ? 'Just now' : minsAgo < 60 ? `${minsAgo}m ago` : `${Math.floor(minsAgo / 60)}h ago`;
+
+                return `
+                    <tr class="${isMe ? 'bg-sky-500/10 border-l-2 border-sky-400' : 'hover:bg-gray-900/50'} transition">
+                        <td class="py-3 px-2 font-bold mono text-sm">${rankBadge}</td>
+                        <td class="py-3 px-2">
+                            <div class="font-bold text-white flex items-center gap-1.5">
+                                <span>${p.name}</span>
+                                ${isMe ? '<span class="text-[10px] bg-sky-500/20 text-sky-300 px-1.5 py-0.2 rounded">YOU</span>' : ''}
+                            </div>
+                        </td>
+                        <td class="py-3 px-2 w-44">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="font-bold text-emerald-400 mono">${p.overallPct}%</span>
+                            </div>
+                            <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+                                <div class="bg-emerald-500 h-full" style="width: ${p.overallPct}%"></div>
+                            </div>
+                        </td>
+                        <td class="py-3 px-2 text-center mono">
+                            <span class="text-sky-400">${p.pPct}%</span> /
+                            <span class="text-emerald-400">${p.cPct}%</span> /
+                            <span class="text-amber-400">${p.mPct}%</span>
+                        </td>
+                        <td class="py-3 px-2 text-center">
+                            <span class="mono font-bold text-purple-300 bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 rounded">${p.mockCount}</span>
+                        </td>
+                        <td class="py-3 px-2 text-center mono font-bold ${p.mockAvg >= 195 ? 'text-emerald-400' : 'text-gray-200'}">
+                            ${p.mockAvg} <span class="text-[10px] text-gray-500">/300</span>
+                        </td>
+                        <td class="py-3 px-2 text-center mono font-bold text-amber-300">
+                            ${p.mockBest}
+                        </td>
+                        <td class="py-3 px-2 text-right text-[11px] text-gray-400">${timeStr}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Render Recent Mock Feed across competitors
+            const playersWithMocks = players.filter(p => p.mockCount > 0);
+            if (playersWithMocks.length === 0) {
+                feed.innerHTML = `<div class="text-xs text-gray-500 py-6 text-center">No mock tests logged in this squad yet. Log your first mock in Tab 3!</div>`;
+            } else {
+                feed.innerHTML = playersWithMocks.map(p => `
+                    <div class="p-3 rounded-lg bg-gray-900/80 border border-gray-800 flex justify-between items-center">
+                        <div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="font-bold text-xs text-white">${p.name}</span>
+                                <span class="text-[10px] text-purple-400 mono">(Mock #${p.mockCount})</span>
+                            </div>
+                            <p class="text-[11px] text-gray-400 mt-0.5">${p.lastMockName}</p>
+                            <div class="text-[10px] mono mt-1 space-x-2">
+                                <span class="text-sky-400">P: ${p.lastMockP}</span>
+                                <span class="text-emerald-400">C: ${p.lastMockC}</span>
+                                <span class="text-amber-400">M: ${p.lastMockM}</span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="mono text-base font-extrabold ${p.lastMockScore >= 195 ? 'text-emerald-400' : 'text-amber-300'}">${p.lastMockScore}/300</span>
+                            <span class="block text-[10px] text-gray-400">${estimatePercentile(p.lastMockScore)}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // --- 4. COUNTDOWN TIMER (EXAM DATE ONLY) ---
+        function updateCountdowns() {
+            const now = new Date();
+            const examDate = new Date('2027-01-22T09:00:00');
+
+            function formatDiff(target) {
+                const diff = target - now;
+                if (diff <= 0) return "0d : 0h : 0m";
+                const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+                const m = Math.floor((diff / 1000 / 60) % 60);
+                return `${d}d : ${h}h : ${m}m`;
+            }
+
+            document.getElementById('exam-timer').innerText = formatDiff(examDate);
+        }
+        setInterval(updateCountdowns, 30000);
+        updateCountdowns();
+
+        // --- 5. RENDER SYLLABUS MATRIX ---
+        function renderSyllabus() {
+            const container = document.getElementById('syllabus-container');
+            const filter = document.getElementById('filter-priority').value;
+            container.innerHTML = '';
+
+            const colors = {
+                Physics: { border: 'border-sky-500/30', badge: 'text-sky-400', bar: 'bg-sky-500' },
+                Chemistry: { border: 'border-emerald-500/30', badge: 'text-emerald-400', bar: 'bg-emerald-500' },
+                Mathematics: { border: 'border-amber-500/30', badge: 'text-amber-400', bar: 'bg-amber-500' }
+            };
+
+            Object.keys(state.syllabus).forEach(subject => {
+                const chapters = state.syllabus[subject].filter(ch => filter === 'ALL' || ch.p === filter);
+                const allSubjectChapters = state.syllabus[subject];
+                const totalChecks = allSubjectChapters.length * 3;
+                const doneChecks = allSubjectChapters.reduce((acc, c) => acc + (c.t ? 1 : 0) + (c.pyq ? 1 : 0) + (c.adv ? 1 : 0), 0);
+                const pct = Math.round((doneChecks / totalChecks) * 100) || 0;
+
+                const col = document.createElement('div');
+                col.className = `glass rounded-xl p-4 flex flex-col border ${colors[subject].border}`;
+                col.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-bold text-base ${colors[subject].badge}">${subject}</h3>
+                        <span class="mono text-xs font-bold text-gray-300">${pct}%</span>
+                    </div>
+                    <div class="w-full bg-gray-800 h-1.5 rounded-full mb-4 overflow-hidden">
+                        <div class="${colors[subject].bar} h-full transition-all duration-300" style="width: ${pct}%"></div>
+                    </div>
+                    <div class="grid grid-cols-12 text-[10px] uppercase font-semibold text-gray-400 border-b border-gray-800 pb-2 mb-2 px-1">
+                        <div class="col-span-6">Chapter</div>
+                        <div class="col-span-2 text-center" title="Full Theory & Short Notes">Theory</div>
+                        <div class="col-span-2 text-center" title="2019-2026 JEE Main PYQs">PYQs</div>
+                        <div class="col-span-2 text-center" title="Reference / High-Level Practice">Prac+</div>
+                    </div>
+                    <div class="space-y-1.5 overflow-y-auto max-h-[460px] custom-scroll pr-1">
+                        ${chapters.map(ch => {
+                            const isComplete = ch.t && ch.pyq && ch.adv;
+                            return `
+                            <div class="grid grid-cols-12 items-center py-2 px-2 rounded-lg text-xs ${isComplete ? 'bg-emerald-950/30 border border-emerald-500/20 text-gray-400' : 'bg-gray-900/60 hover:bg-gray-800/60'} transition">
+                                <div class="col-span-6 pr-2 flex items-center gap-1.5">
+                                    <span class="w-1.5 h-1.5 rounded-full ${ch.p === 'HIGH' ? 'bg-rose-500' : 'bg-amber-400'}" title="${ch.p} Priority"></span>
+                                    <span class="${isComplete ? 'line-through text-gray-500' : 'text-gray-200 font-medium'}">${ch.name}</span>
+                                </div>
+                                <div class="col-span-2 flex justify-center">
+                                    <input type="checkbox" ${ch.t ? 'checked' : ''} onchange="toggleChapter('${subject}', '${ch.id}', 't')">
+                                </div>
+                                <div class="col-span-2 flex justify-center">
+                                    <input type="checkbox" ${ch.pyq ? 'checked' : ''} onchange="toggleChapter('${subject}', '${ch.id}', 'pyq')">
+                                </div>
+                                <div class="col-span-2 flex justify-center">
+                                    <input type="checkbox" ${ch.adv ? 'checked' : ''} onchange="toggleChapter('${subject}', '${ch.id}', 'adv')">
+                                </div>
+                            </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+                container.appendChild(col);
+            });
+            updateDashboardMetrics();
+        }
+
+        function toggleChapter(subject, id, field) {
+            const ch = state.syllabus[subject].find(c => c.id === id);
+            if (ch) {
+                ch[field] = !ch[field];
+                saveState();
+                renderSyllabus();
+            }
+        }
+
+        // --- 6. DASHBOARD METRICS ---
+        function updateDashboardMetrics() {
+            let totalTasks = 0, completedTasks = 0, totalChapters = 0, completedChapters = 0;
+
+            const subStats = { Physics: 0, Chemistry: 0, Mathematics: 0 };
+
+            Object.keys(state.syllabus).forEach(sub => {
+                let subDone = 0;
+                const subTotal = state.syllabus[sub].length * 3;
+                state.syllabus[sub].forEach(ch => {
+                    totalChapters++;
+                    totalTasks += 3;
+                    const doneCount = (ch.t ? 1 : 0) + (ch.pyq ? 1 : 0) + (ch.adv ? 1 : 0);
+                    completedTasks += doneCount;
+                    subDone += doneCount;
+                    if (doneCount === 3) completedChapters++;
+                });
+                subStats[sub] = Math.round((subDone / subTotal) * 100) || 0;
+            });
+
+            const pct = Math.round((completedTasks / totalTasks) * 100) || 0;
+            document.getElementById('overall-pct').innerText = `${pct}%`;
+            document.getElementById('overall-count').innerText = `${completedTasks} / ${totalTasks} Checkpoints`;
+            document.getElementById('overall-bar').style.width = `${pct}%`;
+
+            document.getElementById('stat-p-pct').innerText = `${subStats.Physics}%`;
+            document.getElementById('stat-c-pct').innerText = `${subStats.Chemistry}%`;
+            document.getElementById('stat-m-pct').innerText = `${subStats.Mathematics}%`;
+            document.getElementById('chapters-left').innerText = `${completedChapters} of ${totalChapters} Chapters Fully Locked`;
+
+            // Mock stats
+            const mocks = state.mocks;
+            document.getElementById('mock-count').innerText = `${mocks.length} Mocks Logged`;
+            if (mocks.length > 0) {
+                const avg = (mocks.reduce((acc, m) => acc + m.total, 0) / mocks.length).toFixed(1);
+                document.getElementById('mock-avg').innerText = `${avg} / 300`;
+            } else {
+                document.getElementById('mock-avg').innerText = `0.0 / 300`;
+            }
+        }
+
+        // --- 7. DAILY PLANNER ---
+        function renderDailyTasks() {
+            const list = document.getElementById('daily-list');
+            list.innerHTML = '';
+            const badgeColors = {
+                Physics: 'bg-sky-500/20 text-sky-400 border-sky-500/30',
+                Chemistry: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+                Math: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+                'Mock/Analysis': 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+            };
+
+            state.dailyTasks.forEach(task => {
+                const li = document.createElement('li');
+                li.className = `flex items-center justify-between p-3 rounded-lg bg-gray-900/80 border border-gray-800 text-xs`;
+                li.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" ${task.done ? 'checked' : ''} onchange="toggleDailyTask(${task.id})">
+                        <span class="px-2 py-0.5 rounded border text-[10px] font-semibold ${badgeColors[task.tag] || ''}">${task.tag}</span>
+                        <span class="${task.done ? 'line-through text-gray-500' : 'text-gray-200'}">${task.text}</span>
+                    </div>
+                    <button onclick="deleteDailyTask(${task.id})" class="text-gray-500 hover:text-rose-400 px-2">✕</button>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        function addDailyTask() {
+            const input = document.getElementById('daily-input');
+            const tag = document.getElementById('daily-tag').value;
+            if (!input.value.trim()) return;
+            state.dailyTasks.unshift({ id: Date.now(), text: input.value.trim(), tag, done: false });
+            input.value = '';
+            saveState();
+            renderDailyTasks();
+        }
+
+        function toggleDailyTask(id) {
+            const task = state.dailyTasks.find(t => t.id === id);
+            if (task) task.done = !task.done;
+            saveState();
+            renderDailyTasks();
+        }
+
+        function deleteDailyTask(id) {
+            state.dailyTasks = state.dailyTasks.filter(t => t.id !== id);
+            saveState();
+            renderDailyTasks();
+        }
+
+        function clearCompletedDaily() {
+            state.dailyTasks = state.dailyTasks.filter(t => !t.done);
+            saveState();
+            renderDailyTasks();
+        }
+
+        // --- 8. MOCK TEST ENGINE ---
+        function estimatePercentile(score) {
+            if (score >= 250) return "99.9+ %ile";
+            if (score >= 220) return "99.6+ %ile";
+            if (score >= 195) return "99.1+ %ile";
+            if (score >= 175) return "98.5 %ile";
+            if (score >= 150) return "97.2 %ile";
+            if (score >= 120) return "94.0 %ile";
+            return "< 90 %ile";
+        }
+
+        function addMockScore() {
+            const date = document.getElementById('mock-date').value || new Date().toISOString().split('T')[0];
+            const name = document.getElementById('mock-name').value.trim() || `Mock #${state.mocks.length + 1}`;
+            const p = parseInt(document.getElementById('mock-p').value) || 0;
+            const c = parseInt(document.getElementById('mock-c').value) || 0;
+            const m = parseInt(document.getElementById('mock-m').value) || 0;
+            const notes = document.getElementById('mock-notes').value.trim() || "No notes logged";
+
+            const total = p + c + m;
+            state.mocks.unshift({ id: Date.now(), date, name, p, c, m, total, notes });
+            
+            document.getElementById('mock-name').value = '';
+            document.getElementById('mock-p').value = '';
+            document.getElementById('mock-c').value = '';
+            document.getElementById('mock-m').value = '';
+            document.getElementById('mock-notes').value = '';
+
+            saveState();
+            renderMocks();
+        }
+
+        function deleteMock(id) {
+            state.mocks = state.mocks.filter(m => m.id !== id);
+            saveState();
+            renderMocks();
+        }
+
+        function renderMocks() {
+            const tbody = document.getElementById('mock-table-body');
+            tbody.innerHTML = '';
+            if (state.mocks.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="py-6 text-center text-gray-500">No mocks logged yet. Log your first mock test to broadcast to the squad leaderboard!</td></tr>`;
+                return;
+            }
+
+            state.mocks.forEach(mock => {
+                const is99 = mock.total >= 195;
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-900/40";
+                tr.innerHTML = `
+                    <td class="py-2.5 px-2 mono text-gray-400">${mock.date}</td>
+                    <td class="py-2.5 px-2 font-semibold text-white">${mock.name}</td>
+                    <td class="py-2.5 px-2 mono text-sky-400">${mock.p}</td>
+                    <td class="py-2.5 px-2 mono text-emerald-400">${mock.c}</td>
+                    <td class="py-2.5 px-2 mono text-amber-400">${mock.m}</td>
+                    <td class="py-2.5 px-2 mono font-bold ${is99 ? 'text-emerald-400' : 'text-amber-300'}">${mock.total}/300</td>
+                    <td class="py-2.5 px-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${is99 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gray-800 text-gray-300'}">${estimatePercentile(mock.total)}</span></td>
+                    <td class="py-2.5 px-2 text-gray-300 max-w-xs truncate" title="${mock.notes}">${mock.notes}</td>
+                    <td class="py-2.5 px-2 text-right"><button onclick="deleteMock(${mock.id})" class="text-gray-500 hover:text-rose-400">✕</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- 9. BUILT-IN STUDY / MOCK TIMER ---
+        let timerSeconds = 5400;
+        let timerInterval = null;
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(timerSeconds / 60);
+            const secs = timerSeconds % 60;
+            document.getElementById('study-timer-display').innerText = 
+                `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function toggleStudyTimer() {
+            const btn = document.getElementById('timer-btn');
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                btn.innerText = "Resume";
+            } else {
+                btn.innerText = "Pause";
+                timerInterval = setInterval(() => {
+                    if (timerSeconds > 0) {
+                        timerSeconds--;
+                        updateTimerDisplay();
+                    } else {
+                        clearInterval(timerInterval);
+                        timerInterval = null;
+                        btn.innerText = "Start";
+                        alert("Time Block Complete! Take a 10-minute breather or begin error analysis.");
+                    }
+                }, 1000);
+            }
+        }
+
+        function resetStudyTimer() {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            timerSeconds = parseInt(document.getElementById('timer-mode').value);
+            document.getElementById('timer-btn').innerText = "Start";
+            updateTimerDisplay();
+        }
+
+        // --- 10. TABS & DATA BACKUP ---
+        function switchTab(tabId) {
+            ['tab-syllabus', 'tab-leaderboard', 'tab-mocks', 'tab-daily'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+                document.getElementById('btn-' + id).classList.remove('tab-active');
+                document.getElementById('btn-' + id).classList.add('text-gray-400');
+            });
+            document.getElementById(tabId).classList.remove('hidden');
+            document.getElementById('btn-' + tabId).classList.add('tab-active');
+            document.getElementById('btn-' + tabId).classList.remove('text-gray-400');
+            if (tabId === 'tab-leaderboard') renderLeaderboard();
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+            const a = document.createElement('a');
+            a.setAttribute("href", dataStr);
+            a.setAttribute("download", `jee2027_backup_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }
+
+        // Initialize App
+        document.getElementById('mock-date').value = new Date().toISOString().split('T')[0];
+        renderSyllabus();
+        renderDailyTasks();
+        renderMocks();
+        initMultiplayerRoom();
+    </script>
+</body>
+</html>
