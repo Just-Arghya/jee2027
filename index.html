@@ -618,7 +618,7 @@
                 playerName: legacyState?.playerName || '',
                 roomCode: roomFromUrl ? roomFromUrl.toUpperCase() : (legacyState?.roomCode || 'JEE2027-SQUAD'),
                 isHost: legacyState?.isHost !== undefined ? legacyState.isHost : !invitedGuest,
-                hostPin: legacyState?.hostPin || '2027',
+                hostPin: legacyState?.hostPin || '027069',
                 kickedIds: legacyState?.kickedIds || [],
                 syllabus: JSON.parse(JSON.stringify(DEFAULT_SYLLABUS)),
                 dailyTasks: legacyState?.dailyTasks || [
@@ -1146,9 +1146,9 @@
                 `;
             } else {
                 container.innerHTML = `
-                    <p class="text-slate-300">Enter the Leader PIN (Default: <code class="text-amber-300 font-bold">2027</code>) to activate Leader/Host Remove powers on this device:</p>
+                    <p class="text-slate-300">Enter the Leader PIN to activate Leader/Host Remove powers on this device:</p>
                     <div class="flex gap-2">
-                        <input id="claim-pin-input" type="password" value="2027" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white mono flex-grow">
+                        <input id="claim-pin-input" type="password" value="027069" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white mono flex-grow">
                         <button onclick="claimLeaderNow()" class="bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 py-2 rounded-xl">Activate Leader</button>
                     </div>
                 `;
@@ -1158,10 +1158,10 @@
 
         function claimLeaderNow() {
             const pin = document.getElementById('claim-pin-input').value.trim();
-            if (pin === state.hostPin || pin === '2027') {
+            if (pin === state.hostPin || pin === '027069') {
                 setHostStatus(true);
             } else {
-                alert("Incorrect PIN (Default is 2027)");
+                alert("Incorrect PIN )");
             }
         }
 
