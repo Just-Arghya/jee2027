@@ -3,221 +3,289 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JEE Main 2027 - Real-Time Multiplayer Command Center</title>
+    <title>JEE Main 2027 — 99+ Percentile Multiplayer Command Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Real-Time WebSocket Engine (MQTT.js with Retained Cloud State) -->
     <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #0b0f19; color: #e2e8f0; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #060911;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%);
+            color: #e2e8f0;
+        }
         .mono { font-family: 'JetBrains Mono', monospace; }
-        .glass { background: rgba(17, 24, 39, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .glass {
+            background: rgba(15, 23, 42, 0.78);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-card {
+            background: linear-gradient(180deg, rgba(17, 24, 39, 0.9) 0%, rgba(11, 15, 25, 0.95) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+        }
         .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: #111827; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
-        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #4b5563; }
-        input[type="checkbox"] { accent-color: #10b981; width: 1.1rem; height: 1.1rem; cursor: pointer; }
-        .tab-active { border-bottom: 2px solid #38bdf8; color: #38bdf8; font-weight: 600; }
-        @keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.9); } }
+        .custom-scroll::-webkit-scrollbar-track { background: #0b0f19; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #334155; }
+        .tab-active {
+            border-bottom: 2px solid #38bdf8;
+            color: #38bdf8;
+            font-weight: 700;
+            background: linear-gradient(180deg, transparent 0%, rgba(56, 189, 248, 0.08) 100%);
+        }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.85); } }
         .live-dot { animation: pulse-dot 2s infinite; }
+        @keyframes row-flash { 0% { background-color: rgba(56, 189, 248, 0.25); } 100% { background-color: transparent; } }
+        .flash-update { animation: row-flash 1.2s ease-out; }
+        .rp-btn {
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+        .rp-btn:active { transform: scale(0.92); }
     </style>
 </head>
 <body class="min-h-screen flex flex-col selection:bg-sky-500 selection:text-white">
 
-    <!-- Top Navigation & Live Countdowns -->
-    <header class="glass sticky top-0 z-50 border-b border-gray-800 px-6 py-4">
-        <div class="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-3">
-                <div class="h-10 w-10 rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center font-extrabold text-xl shadow-lg shadow-sky-500/20">99+</div>
+    <!-- Top Navigation Header -->
+    <header class="glass sticky top-0 z-50 border-b border-slate-800/80 px-4 sm:px-6 py-3.5">
+        <div class="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-center gap-3.5">
+            <div class="flex items-center gap-3.5">
+                <div class="h-11 w-11 rounded-xl bg-gradient-to-br from-sky-500 via-indigo-500 to-purple-600 flex items-center justify-center font-black text-lg text-white shadow-lg shadow-sky-500/25 border border-white/15">
+                    99+
+                </div>
                 <div>
                     <div class="flex items-center gap-2 flex-wrap">
-                        <h1 class="text-lg font-bold tracking-tight text-white">JEE MAIN 2027 COMMAND CENTER</h1>
-                        <span class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1.5">
-                            <span id="net-dot" class="w-2 h-2 rounded-full bg-amber-400 live-dot"></span>
-                            Room: <span id="header-room-id" class="mono font-bold">JEE2027-SQUAD</span>
+                        <h1 class="text-base sm:text-lg font-extrabold tracking-tight text-white">JEE MAIN 2027 COMMAND CENTER</h1>
+                        <span class="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                            <span id="net-dot" class="w-2 h-2 rounded-full bg-emerald-400 live-dot"></span>
+                            Room: <span id="header-room-id" class="mono">JEE2027-SQUAD</span>
                         </span>
-                        <span id="host-header-badge" class="hidden bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        <span id="host-header-badge" class="bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
                             👑 LEADER (HOST)
                         </span>
                     </div>
-                    <p class="text-xs text-gray-400">Target: 22 Jan 2027 (200+ Marks) • Real-Time Multiplayer Syllabus & Mock Arena</p>
+                    <p class="text-xs text-slate-400 mt-0.5">68-Chapter Official Syllabus Tracker [Revision + Practice] & Live Mock Arena</p>
                 </div>
             </div>
 
-            <!-- User Profile, Invite Link & Countdown -->
-            <div class="flex flex-wrap gap-3 items-center">
-                <!-- Player Profile Quick Edit -->
-                <div class="bg-gray-900/90 border border-gray-700/80 rounded-lg px-3 py-1.5 flex items-center gap-2">
-                    <span class="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Player:</span>
-                    <input id="player-name-input" type="text" onchange="updatePlayerProfile()" placeholder="Your Name" class="bg-transparent text-xs font-bold text-sky-400 focus:outline-none w-28 border-b border-transparent focus:border-sky-500">
+            <!-- Right Controls -->
+            <div class="flex flex-wrap gap-2.5 items-center justify-center">
+                <!-- Player Name Box -->
+                <div class="bg-slate-900/90 border border-slate-700/80 rounded-xl px-3 py-1.5 flex items-center gap-2">
+                    <span class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Student:</span>
+                    <input id="player-name-input" type="text" onchange="updatePlayerProfile()" placeholder="Your Name" class="bg-transparent text-xs font-extrabold text-sky-400 focus:outline-none w-28 border-b border-transparent focus:border-sky-500">
                 </div>
 
-                <!-- Invite Competitors Button -->
-                <button onclick="copyInviteLink()" id="invite-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3.5 py-2.5 rounded-lg shadow-lg shadow-indigo-600/20 transition flex items-center gap-1.5">
+                <!-- Copy Invite Link -->
+                <button onclick="copyInviteLink()" id="invite-btn" class="bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-indigo-600/25 transition flex items-center gap-1.5">
                     <span>🔗 Copy Invite Link</span>
                 </button>
 
                 <!-- JEE Exam Countdown -->
-                <div class="bg-rose-500/10 border border-rose-500/30 rounded-lg px-4 py-1.5 text-center">
-                    <span class="text-[10px] uppercase tracking-wider text-rose-400 font-semibold block">JEE Main Exam (Jan 22)</span>
-                    <span id="exam-timer" class="mono text-base font-bold text-rose-300">--d : --h : --m</span>
+                <div class="bg-rose-500/10 border border-rose-500/30 rounded-xl px-3.5 py-1.5 text-center">
+                    <span class="text-[9px] uppercase tracking-wider text-rose-400 font-bold block">JEE Main (22 Jan 2027)</span>
+                    <span id="exam-timer" class="mono text-sm font-extrabold text-rose-300">--d : --h : --m</span>
                 </div>
 
-                <button onclick="exportData()" class="bg-gray-800 hover:bg-gray-700 text-xs px-3 py-2.5 rounded-lg border border-gray-700 transition" title="Backup Progress">Backup JSON</button>
+                <button onclick="exportData()" class="bg-slate-800/90 hover:bg-slate-700 text-slate-300 text-xs font-semibold px-3 py-2.5 rounded-xl border border-slate-700 transition" title="Backup Progress JSON">
+                    💾 Backup
+                </button>
             </div>
         </div>
     </header>
 
-    <!-- Main Content Container -->
+    <!-- Main Container -->
     <main class="max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex-grow flex flex-col gap-6">
 
-        <!-- Overall Progress & Pace Analytics Bar -->
-        <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="glass p-4 rounded-xl flex flex-col justify-between">
-                <span class="text-xs text-gray-400 font-medium">YOUR SYLLABUS CLEARED</span>
+        <!-- Top 4 KPI Analytics Cards -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Card 1: Overall Syllabus R+P -->
+            <div class="glass-card p-4 rounded-2xl flex flex-col justify-between relative overflow-hidden">
+                <div class="flex justify-between items-start">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">TOTAL SYLLABUS (R + P)</span>
+                    <span id="overall-count" class="text-[11px] mono font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">0 / 136</span>
+                </div>
                 <div class="flex items-baseline justify-between mt-2">
-                    <span id="overall-pct" class="mono text-3xl font-extrabold text-emerald-400">0%</span>
-                    <span id="overall-count" class="text-xs text-gray-400">0 / 0 Tasks</span>
+                    <span id="overall-pct" class="mono text-3xl font-black text-white">0%</span>
+                    <div class="text-right text-[11px] text-slate-400 mono">
+                        <span class="text-sky-400 font-semibold">R: <span id="total-r-count">0</span>/68</span> • 
+                        <span class="text-indigo-400 font-semibold">P: <span id="total-p-count">0</span>/68</span>
+                    </div>
                 </div>
-                <div class="w-full bg-gray-800 h-2 rounded-full mt-3 overflow-hidden">
-                    <div id="overall-bar" class="bg-emerald-500 h-full transition-all duration-300" style="width: 0%"></div>
+                <div class="w-full bg-slate-800/90 h-2 rounded-full mt-3 overflow-hidden">
+                    <div id="overall-bar" class="bg-gradient-to-r from-sky-500 to-emerald-400 h-full transition-all duration-300" style="width: 0%"></div>
                 </div>
             </div>
 
-            <div class="glass p-4 rounded-xl flex flex-col justify-between">
-                <span class="text-xs text-gray-400 font-medium">SUBJECT MASTERY BREAKDOWN</span>
-                <div class="grid grid-cols-3 gap-2 mt-2 text-center">
-                    <div class="bg-gray-900/70 rounded p-1.5 border border-sky-500/20">
-                        <span class="text-[10px] text-sky-400 block font-semibold">PHYS</span>
-                        <span id="stat-p-pct" class="mono text-sm font-bold text-white">0%</span>
-                    </div>
-                    <div class="bg-gray-900/70 rounded p-1.5 border border-emerald-500/20">
-                        <span class="text-[10px] text-emerald-400 block font-semibold">CHEM</span>
-                        <span id="stat-c-pct" class="mono text-sm font-bold text-white">0%</span>
-                    </div>
-                    <div class="bg-gray-900/70 rounded p-1.5 border border-amber-500/20">
-                        <span class="text-[10px] text-amber-400 block font-semibold">MATH</span>
-                        <span id="stat-m-pct" class="mono text-sm font-bold text-white">0%</span>
-                    </div>
-                </div>
-                <p id="chapters-left" class="text-[11px] text-gray-400 mt-2">-- Chapters Fully Locked</p>
-            </div>
-
-            <div class="glass p-4 rounded-xl flex flex-col justify-between">
-                <span class="text-xs text-gray-400 font-medium">YOUR MOCK TEST TRACKER</span>
-                <div class="flex items-baseline justify-between mt-2">
-                    <span id="mock-avg" class="mono text-2xl font-bold text-purple-400">0.0</span>
-                    <span id="mock-count" class="text-xs text-gray-400">0 Mocks Logged</span>
-                </div>
-                <p class="text-[11px] text-gray-400 mt-2">99%ile Safe Score: <strong class="text-gray-200">195 - 210+ / 300</strong></p>
-            </div>
-
-            <!-- Built-in Focus Pomodoro / Mock Timer -->
-            <div class="glass p-4 rounded-xl flex flex-col justify-between border border-sky-500/20">
+            <!-- Card 2: Subject Breakdown -->
+            <div class="glass-card p-4 rounded-2xl flex flex-col justify-between">
                 <div class="flex justify-between items-center">
-                    <span class="text-xs text-sky-400 font-semibold uppercase">Study / Mock Timer</span>
-                    <select id="timer-mode" onchange="resetStudyTimer()" class="bg-gray-900 text-xs border border-gray-700 rounded px-1.5 py-0.5 text-gray-300">
-                        <option value="5400">90m Deep Block</option>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">SUBJECT MASTERY</span>
+                    <span id="chapters-left" class="text-[11px] text-amber-400 font-semibold">0/68 Locked</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mt-2.5 text-center">
+                    <div class="bg-slate-900/90 rounded-xl p-2 border border-sky-500/25">
+                        <span class="text-[10px] text-sky-400 block font-extrabold">PHYSICS</span>
+                        <span id="stat-p-pct" class="mono text-base font-black text-white">0%</span>
+                    </div>
+                    <div class="bg-slate-900/90 rounded-xl p-2 border border-emerald-500/25">
+                        <span class="text-[10px] text-emerald-400 block font-extrabold">CHEM</span>
+                        <span id="stat-c-pct" class="mono text-base font-black text-white">0%</span>
+                    </div>
+                    <div class="bg-slate-900/90 rounded-xl p-2 border border-amber-500/25">
+                        <span class="text-[10px] text-amber-400 block font-extrabold">MATHS</span>
+                        <span id="stat-m-pct" class="mono text-base font-black text-white">0%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Mock Test Summary -->
+            <div class="glass-card p-4 rounded-2xl flex flex-col justify-between">
+                <div class="flex justify-between items-center">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">MOCK TEST ENGINE</span>
+                    <span id="mock-count" class="text-[11px] mono font-semibold text-purple-300 bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 rounded-md">0 Tests</span>
+                </div>
+                <div class="flex items-baseline justify-between mt-2">
+                    <span id="mock-avg" class="mono text-2xl font-black text-purple-400">0 / 300</span>
+                    <span id="mock-best-top" class="text-xs mono text-amber-300 font-bold">Best: 0</span>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-2">Target 99%ile Score: <strong class="text-emerald-400">195 – 210+</strong></p>
+            </div>
+
+            <!-- Card 4: Study / Mock Timer -->
+            <div class="glass-card p-4 rounded-2xl flex flex-col justify-between border border-sky-500/25">
+                <div class="flex justify-between items-center">
+                    <span class="text-[11px] text-sky-400 font-bold uppercase tracking-wider">⏱️ FOCUS / MOCK TIMER</span>
+                    <select id="timer-mode" onchange="resetStudyTimer()" class="bg-slate-900 text-[11px] border border-slate-700 rounded-lg px-2 py-0.5 text-slate-200">
+                        <option value="5400">90m Practice</option>
                         <option value="10800">180m Full Mock</option>
-                        <option value="3000">50m PYQ Sprint</option>
+                        <option value="3000">50m Revision</option>
                     </select>
                 </div>
                 <div class="flex items-center justify-between mt-2">
-                    <span id="study-timer-display" class="mono text-2xl font-extrabold text-white">90:00</span>
+                    <span id="study-timer-display" class="mono text-2xl font-black text-white">90:00</span>
                     <div class="flex gap-1.5">
-                        <button onclick="toggleStudyTimer()" id="timer-btn" class="bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold px-3 py-1.5 rounded transition">Start</button>
-                        <button onclick="resetStudyTimer()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs px-2.5 py-1.5 rounded transition">Reset</button>
+                        <button onclick="toggleStudyTimer()" id="timer-btn" class="bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg transition">Start</button>
+                        <button onclick="resetStudyTimer()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition">Reset</button>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- Navigation Tabs -->
-        <nav class="flex border-b border-gray-800 gap-6 text-sm overflow-x-auto">
-            <button onclick="switchTab('tab-syllabus')" id="btn-tab-syllabus" class="pb-3 tab-active transition whitespace-nowrap">1. Syllabus Tracker</button>
-            <button onclick="switchTab('tab-leaderboard')" id="btn-tab-leaderboard" class="pb-3 text-gray-400 hover:text-gray-200 transition whitespace-nowrap flex items-center gap-2">
-                <span>2. Competitor Arena (Live Leaderboard)</span>
+        <nav class="flex border-b border-slate-800 gap-2 sm:gap-6 text-xs sm:text-sm overflow-x-auto">
+            <button onclick="switchTab('tab-syllabus')" id="btn-tab-syllabus" class="px-4 py-3 tab-active rounded-t-xl transition whitespace-nowrap flex items-center gap-2">
+                <span>📚 1. Chapter-Wise Syllabus Tracker</span>
+                <span class="bg-sky-500/20 text-sky-300 text-[10px] mono px-1.5 py-0.5 rounded">68 Ch</span>
+            </button>
+            <button onclick="switchTab('tab-leaderboard')" id="btn-tab-leaderboard" class="px-4 py-3 text-slate-400 hover:text-slate-200 rounded-t-xl transition whitespace-nowrap flex items-center gap-2">
+                <span>🏆 2. Competitor Arena (Live Leaderboard)</span>
                 <span id="competitor-count-badge" class="bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 text-[10px] mono px-1.5 py-0.5 rounded-full">1</span>
             </button>
-            <button onclick="switchTab('tab-mocks')" id="btn-tab-mocks" class="pb-3 text-gray-400 hover:text-gray-200 transition whitespace-nowrap">3. Mock Test Engine</button>
-            <button onclick="switchTab('tab-daily')" id="btn-tab-daily" class="pb-3 text-gray-400 hover:text-gray-200 transition whitespace-nowrap">4. Daily Grind & PYQ Planner</button>
+            <button onclick="switchTab('tab-mocks')" id="btn-tab-mocks" class="px-4 py-3 text-slate-400 hover:text-slate-200 rounded-t-xl transition whitespace-nowrap">
+                <span>📈 3. Mock Test Engine</span>
+            </button>
+            <button onclick="switchTab('tab-daily')" id="btn-tab-daily" class="px-4 py-3 text-slate-400 hover:text-slate-200 rounded-t-xl transition whitespace-nowrap">
+                <span>🎯 4. Daily Grind Planner</span>
+            </button>
         </nav>
 
-        <!-- TAB 1: SYLLABUS SPRINT -->
-        <section id="tab-syllabus" class="space-y-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-900/60 p-4 rounded-xl border border-gray-800">
-                <div>
-                    <h2 class="text-base font-bold text-white">High-Yield Syllabus & Revision Matrix</h2>
-                    <p class="text-xs text-gray-400">Check off <strong class="text-gray-200">Theory Revision</strong>, <strong class="text-gray-200">2019–2026 PYQs</strong>, and <strong class="text-gray-200">Selected Reference Problems</strong>. Every box you check broadcasts live to your Squad Leaderboard!</p>
+        <!-- ==================== TAB 1: OFFICIAL 68-CHAPTER SYLLABUS TRACKER [R + P] ==================== -->
+        <section id="tab-syllabus" class="space-y-5">
+            <!-- Filter & Search Control Bar -->
+            <div class="glass-card p-4 rounded-2xl flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
+                <div class="space-y-0.5">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h2 class="text-base font-extrabold text-white">JEE MAIN — CHAPTER-WISE REVISION & PRACTICE TRACKER</h2>
+                        <span class="text-[11px] bg-sky-500/15 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-md font-semibold">
+                            [ R ] = Revision Completed • [ P ] = Practice Completed
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400">Click <strong class="text-sky-400">[ R ]</strong> when revision is done and <strong class="text-indigo-400">[ P ]</strong> when PYQs/Practice are done. Syncs live with your squad!</p>
                 </div>
-                <div class="flex gap-2">
-                    <select id="filter-priority" onchange="renderSyllabus()" class="bg-gray-800 text-xs border border-gray-700 rounded-lg px-3 py-2 text-gray-200">
-                        <option value="ALL">All Priorities</option>
-                        <option value="HIGH">High Priority (Tier 1)</option>
-                        <option value="MED">Medium Priority (Tier 2)</option>
+
+                <div class="flex flex-wrap sm:flex-nowrap gap-2.5 items-center">
+                    <div class="relative flex-grow sm:w-56">
+                        <input id="syllabus-search" type="text" oninput="renderSyllabus()" placeholder="🔍 Search chapter (e.g. Optics)..." class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-sky-500">
+                    </div>
+                    <select id="filter-status" onchange="renderSyllabus()" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 font-medium">
+                        <option value="ALL">Show: All 68 Chapters</option>
+                        <option value="INCOMPLETE">Pending Chapters</option>
+                        <option value="NO_R">Revision [R] Pending</option>
+                        <option value="NO_P">Practice [P] Pending</option>
+                        <option value="COMPLETED">Completed (R + P Locked)</option>
                     </select>
                 </div>
             </div>
 
+            <!-- 3 Columns: Physics, Chemistry, Mathematics -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="syllabus-container">
-                <!-- Populated by JS: Physics, Chemistry, Mathematics -->
+                <!-- Populated by JS -->
             </div>
         </section>
 
-        <!-- TAB 2: MULTIPLAYER COMPETITOR ARENA -->
+        <!-- ==================== TAB 2: MULTIPLAYER COMPETITOR ARENA ==================== -->
         <section id="tab-leaderboard" class="hidden space-y-6">
-            <!-- Room Controls & Host Banner -->
-            <div class="glass p-5 rounded-xl border border-indigo-500/30 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                <div class="space-y-1">
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <span class="text-xs font-bold uppercase tracking-wider text-indigo-400">Multiplayer Squad Room</span>
-                        <span id="sync-status" class="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-semibold">Connecting Live Relays...</span>
-                        <span id="role-status-badge" class="text-[10px] bg-gray-800 text-gray-300 border border-gray-700 px-2.5 py-0.5 rounded-full font-semibold">Member</span>
+
+            <!-- LEADER / HOST CONTROL BAR -->
+            <div class="glass p-4 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-slate-900/90 to-indigo-500/10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div class="flex items-start sm:items-center gap-3">
+                    <div class="h-10 w-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-xl shrink-0">👑</div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span id="leader-status-title" class="text-sm font-extrabold text-amber-300">LEADER (HOST) ACCOUNT ACTIVE</span>
+                            <span id="sync-status" class="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-semibold">🟢 Live Real-Time Sync Active</span>
+                        </div>
+                        <p id="leader-status-desc" class="text-xs text-slate-300 mt-0.5">
+                            As Leader/Host, you can inspect everyone's chapters and click <strong class="text-rose-400">🗑️ Remove</strong> next to any student to remove them from the squad.
+                        </p>
                     </div>
-                    <h2 class="text-lg font-bold text-white">Live Squad Leaderboard & Mock Score Comparison</h2>
-                    <p class="text-xs text-gray-400">Share the invite link with friends. Everyone's Syllabus % and Mock Test scores sync automatically in real time.</p>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-                    <div class="flex items-center bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
-                        <span class="text-xs text-gray-400 px-3 py-2 bg-gray-800/60 border-r border-gray-700">Room</span>
-                        <input id="room-code-input" type="text" class="bg-transparent text-xs mono font-bold text-white px-3 py-2 w-32 focus:outline-none uppercase" placeholder="JEE2027-SQUAD">
-                        <button onclick="changeRoom()" class="bg-gray-800 hover:bg-gray-700 text-sky-400 text-xs font-semibold px-3 py-2 transition">Switch</button>
+                    <div class="flex items-center bg-slate-950 border border-slate-700 rounded-xl overflow-hidden">
+                        <span class="text-[11px] text-slate-400 px-2.5 py-2 bg-slate-900 border-r border-slate-700">Room</span>
+                        <input id="room-code-input" type="text" class="bg-transparent text-xs mono font-bold text-white px-2.5 py-2 w-28 focus:outline-none uppercase" value="JEE2027-SQUAD">
+                        <button onclick="changeRoom()" class="bg-slate-800 hover:bg-slate-700 text-sky-400 text-xs font-bold px-2.5 py-2 transition">Join</button>
                     </div>
-                    <button onclick="copyInviteLink()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition">
-                        🔗 Invite Friends
+
+                    <button onclick="addDemoCompetitor()" class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold px-3 py-2 rounded-xl transition">
+                        🧪 + Add Test Friend
                     </button>
-                    <button onclick="openHostModal()" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold px-3 py-2 rounded-lg transition" title="Manage Leader/Host permissions">
+
+                    <button onclick="toggleLeaderMode()" id="toggle-leader-btn" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold px-3 py-2 rounded-xl transition">
                         👑 Host Settings
                     </button>
-                    <button onclick="broadcastMyStats(true)" class="bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs px-3 py-2 rounded-lg border border-gray-700 transition" title="Force push your latest stats">
-                        ↻ Sync
+
+                    <button onclick="forceFullSync()" class="bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-lg shadow-sky-600/20">
+                        ↻ Sync Now
                     </button>
                 </div>
             </div>
 
-            <!-- Main Squad Standings Table (Full Width matching screenshot) -->
-            <div class="glass p-5 rounded-xl space-y-4">
+            <!-- Main Squad Standings Table -->
+            <div class="glass-card p-5 rounded-2xl space-y-4">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
-                        <h3 class="text-base font-bold text-white">Squad Standings (Live Real-Time Sync)</h3>
-                        <p class="text-xs text-gray-400">Shows each student's Syllabus Progression, Total Tests Given, Cumulative Marks in Physics, Chemistry, Math, and Averages.</p>
+                        <h3 class="text-base font-extrabold text-white">Squad Standings (Live Real-Time Sync)</h3>
+                        <p class="text-xs text-slate-400">Shows each student's Syllabus Progression (Revision + Practice), Total Tests Given, Cumulative Marks in Physics, Chemistry, Math, and Averages.</p>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <select id="leaderboard-sort" onchange="renderLeaderboard()" class="bg-gray-900 text-xs border border-gray-700 rounded-lg px-3 py-2 text-gray-200">
-                            <option value="grandTotal">Rank by: Total Cumulative Marks</option>
-                            <option value="syllabus">Rank by: Syllabus Progression %</option>
-                            <option value="mockAvg">Rank by: Overall Mock Average</option>
-                            <option value="mockCount">Rank by: Total Tests Given</option>
-                            <option value="mockBest">Rank by: Highest Mock Score</option>
-                        </select>
-                    </div>
+                    <select id="leaderboard-sort" onchange="renderLeaderboard()" class="bg-slate-900 text-xs border border-slate-700 rounded-xl px-3 py-2 text-slate-200 font-medium">
+                        <option value="grandTotal">Rank by: Total Cumulative Marks</option>
+                        <option value="syllabus">Rank by: Syllabus Progression (R+P) %</option>
+                        <option value="mockAvg">Rank by: Overall Mock Average</option>
+                        <option value="mockCount">Rank by: Total Tests Given</option>
+                        <option value="mockBest">Rank by: Highest Mock Score</option>
+                    </select>
                 </div>
 
                 <div class="overflow-x-auto custom-scroll">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead>
-                            <tr class="border-b border-gray-800 text-gray-400 uppercase text-[11px]">
+                            <tr class="border-b border-slate-800 text-slate-400 uppercase text-[11px]">
                                 <th class="py-3 px-3">RANK</th>
                                 <th class="py-3 px-3">STUDENT</th>
                                 <th class="py-3 px-3">SYLLABUS (R+P)</th>
@@ -230,98 +298,91 @@
                                 <th class="py-3 px-3 text-right">ACTION</th>
                             </tr>
                         </thead>
-                        <tbody id="leaderboard-body" class="divide-y divide-gray-800/60">
-                            <!-- Populated by JS -->
-                        </tbody>
+                        <tbody id="leaderboard-body" class="divide-y divide-slate-800/60"></tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Bottom Row: Live Squad Mock Test Feed & Manual Sync Backup -->
+            <!-- Live Squad Mock Feed & Manual Stat Backup -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 glass p-5 rounded-xl space-y-3 border border-purple-500/20">
+                <div class="lg:col-span-2 glass-card p-5 rounded-2xl space-y-3 border border-purple-500/20">
                     <div class="flex justify-between items-center">
-                        <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-                            <span>🔥 LIVE SQUAD MOCK TEST FEED</span>
-                        </h3>
-                        <span class="text-xs text-gray-400">Latest test scores & subject breakdown</span>
+                        <h3 class="text-sm font-extrabold text-purple-400 uppercase tracking-wider">🔥 LIVE SQUAD MOCK TEST FEED</h3>
+                        <span class="text-xs text-slate-400">Latest test scores & subject breakdown</span>
                     </div>
-                    <div id="squad-mock-feed" class="space-y-2.5 max-h-72 overflow-y-auto custom-scroll pr-1">
-                        <!-- Populated by JS -->
-                    </div>
+                    <div id="squad-mock-feed" class="space-y-2.5 max-h-72 overflow-y-auto custom-scroll pr-1"></div>
                 </div>
 
-                <!-- Manual Sync Backup + Host Kicked List Management -->
-                <div class="glass p-5 rounded-xl space-y-4 border border-gray-800 flex flex-col justify-between">
+                <div class="glass-card p-5 rounded-2xl space-y-4 flex flex-col justify-between">
                     <div class="space-y-2">
                         <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">MANUAL SYNC BACKUP</span>
                         <h4 class="text-sm font-bold text-white">Share or Import Stat Code</h4>
-                        <p class="text-xs text-gray-400">If a friend is on a strict college/school firewall, you can also exchange instant stat codes on WhatsApp:</p>
+                        <p class="text-xs text-slate-400">If a friend is on a restricted network, you can also exchange instant stat codes on WhatsApp:</p>
                     </div>
                     <div class="space-y-2.5">
-                        <button onclick="copySnapshotCode()" class="w-full bg-gray-900 hover:bg-gray-800 text-xs text-sky-400 font-semibold py-2.5 px-3 rounded-lg border border-gray-700 transition">📋 Copy My Stat Code</button>
-                        <button onclick="importSnapshotPrompt()" class="w-full bg-gray-900 hover:bg-gray-800 text-xs text-emerald-400 font-semibold py-2.5 px-3 rounded-lg border border-gray-700 transition">📥 Paste Friend's Stat Code</button>
+                        <button onclick="copySnapshotCode()" class="w-full bg-slate-900 hover:bg-slate-800 text-xs text-sky-400 font-bold py-2.5 px-3 rounded-xl border border-slate-700 transition">📋 Copy My Stat Code</button>
+                        <button onclick="importSnapshotPrompt()" class="w-full bg-slate-900 hover:bg-slate-800 text-xs text-emerald-400 font-bold py-2.5 px-3 rounded-xl border border-slate-700 transition">📥 Paste Friend's Stat Code</button>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- TAB 3: MOCK TEST ENGINE -->
+        <!-- ==================== TAB 3: MOCK TEST ENGINE ==================== -->
         <section id="tab-mocks" class="hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Log New Mock Form -->
-                <div class="glass p-5 rounded-xl space-y-4">
-                    <h2 class="text-base font-bold text-white">Log Full-Length Mock Test</h2>
-                    <p class="text-xs text-gray-400">Logging a mock automatically broadcasts your new Mock Count, Cumulative P/C/M Marks, and Average to your Squad Leaderboard.</p>
+                <div class="glass-card p-5 rounded-2xl space-y-4">
+                    <h2 class="text-base font-extrabold text-white">Log Full-Length Mock Test</h2>
+                    <p class="text-xs text-slate-400">Logging a mock automatically broadcasts your new Mock Count, Cumulative P/C/M Marks, and Average to your Squad Leaderboard.</p>
 
                     <div class="space-y-3 text-xs">
                         <div class="grid grid-cols-2 gap-2">
                             <div>
-                                <label class="text-gray-400 block mb-1">Date</label>
-                                <input type="date" id="mock-date" class="w-full bg-gray-900 border border-gray-700 rounded px-2.5 py-2 text-white">
+                                <label class="text-slate-400 block mb-1">Date</label>
+                                <input type="date" id="mock-date" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-white">
                             </div>
                             <div>
-                                <label class="text-gray-400 block mb-1">Paper / Test Number</label>
-                                <input type="text" id="mock-name" placeholder="e.g., Mock #14 (Allen/Mathongo)" class="w-full bg-gray-900 border border-gray-700 rounded px-2.5 py-2 text-white">
+                                <label class="text-slate-400 block mb-1">Paper / Test Number</label>
+                                <input type="text" id="mock-name" placeholder="e.g., Mock #1 (Allen/Mathongo)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-white">
                             </div>
                         </div>
 
                         <div class="grid grid-cols-3 gap-2">
                             <div>
-                                <label class="text-sky-400 block mb-1">Physics (/100)</label>
-                                <input type="number" id="mock-p" min="-25" max="100" placeholder="75" class="w-full bg-gray-900 border border-gray-700 rounded px-2.5 py-2 text-white mono">
+                                <label class="text-sky-400 font-semibold block mb-1">Physics (/100)</label>
+                                <input type="number" id="mock-p" min="-25" max="100" placeholder="75" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-white mono">
                             </div>
                             <div>
-                                <label class="text-emerald-400 block mb-1">Chem (/100)</label>
-                                <input type="number" id="mock-c" min="-25" max="100" placeholder="80" class="w-full bg-gray-900 border border-gray-700 rounded px-2.5 py-2 text-white mono">
+                                <label class="text-emerald-400 font-semibold block mb-1">Chem (/100)</label>
+                                <input type="number" id="mock-c" min="-25" max="100" placeholder="80" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-white mono">
                             </div>
                             <div>
-                                <label class="text-amber-400 block mb-1">Math (/100)</label>
-                                <input type="number" id="mock-m" min="-25" max="100" placeholder="55" class="w-full bg-gray-900 border border-gray-700 rounded px-2.5 py-2 text-white mono">
+                                <label class="text-amber-400 font-semibold block mb-1">Math (/100)</label>
+                                <input type="number" id="mock-m" min="-25" max="100" placeholder="55" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-white mono">
                             </div>
                         </div>
 
                         <div>
-                            <label class="text-gray-400 block mb-1">Weak Chapters / Silly Mistakes To Fix</label>
-                            <textarea id="mock-notes" rows="2" placeholder="e.g., Missed sign in Ray Optics lens formula; revise Coordination Compounds isomerism..." class="w-full bg-gray-900 border border-gray-700 rounded px-2.5 py-2 text-white"></textarea>
+                            <label class="text-slate-400 block mb-1">Error Post-Mortem / Weak Topics</label>
+                            <textarea id="mock-notes" rows="2" placeholder="e.g., Revise Ray Optics sign convention & Coordination isomerism..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-2 text-white"></textarea>
                         </div>
 
-                        <button onclick="addMockScore()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold py-2.5 rounded-lg transition">Save & Broadcast Mock Result</button>
+                        <button onclick="addMockScore()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-2.5 rounded-xl transition shadow-lg shadow-purple-600/25">
+                            🚀 Save & Broadcast Mock Result
+                        </button>
                     </div>
                 </div>
 
-                <!-- Mock Analytics & History Table -->
-                <div class="lg:col-span-2 glass p-5 rounded-xl flex flex-col justify-between space-y-4">
+                <div class="lg:col-span-2 glass-card p-5 rounded-2xl flex flex-col justify-between space-y-4">
                     <div>
                         <div class="flex justify-between items-center mb-3">
-                            <h2 class="text-base font-bold text-white">Your Mock Test Performance Log</h2>
-                            <span class="text-xs px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">Target: 200+ Marks (99+ %ile)</span>
+                            <h2 class="text-base font-extrabold text-white">Your Mock Test Performance Log</h2>
+                            <span class="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-semibold">Target: 200+ Marks (99+ %ile)</span>
                         </div>
 
                         <div class="overflow-x-auto max-h-96 custom-scroll">
                             <table class="w-full text-left border-collapse text-xs">
                                 <thead>
-                                    <tr class="border-b border-gray-800 text-gray-400 uppercase">
+                                    <tr class="border-b border-slate-800 text-slate-400 uppercase">
                                         <th class="py-2.5 px-2">Date</th>
                                         <th class="py-2.5 px-2">Test Name</th>
                                         <th class="py-2.5 px-2 text-sky-400">P</th>
@@ -329,13 +390,11 @@
                                         <th class="py-2.5 px-2 text-amber-400">M</th>
                                         <th class="py-2.5 px-2">Total</th>
                                         <th class="py-2.5 px-2">Est. %ile</th>
-                                        <th class="py-2.5 px-2">Error Post-Mortem</th>
+                                        <th class="py-2.5 px-2">Post-Mortem Notes</th>
                                         <th class="py-2.5 px-2"></th>
                                     </tr>
                                 </thead>
-                                <tbody id="mock-table-body" class="divide-y divide-gray-800/60">
-                                    <!-- Populated by JS -->
-                                </tbody>
+                                <tbody id="mock-table-body" class="divide-y divide-slate-800/60"></tbody>
                             </table>
                         </div>
                     </div>
@@ -343,51 +402,42 @@
             </div>
         </section>
 
-        <!-- TAB 4: DAILY GRIND & PYQ PLANNER -->
+        <!-- ==================== TAB 4: DAILY GRIND PLANNER ==================== -->
         <section id="tab-daily" class="hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 glass p-5 rounded-xl space-y-4">
+                <div class="lg:col-span-2 glass-card p-5 rounded-2xl space-y-4">
                     <div class="flex justify-between items-center">
                         <div>
-                            <h2 class="text-base font-bold text-white">Today's Target Queue</h2>
-                            <p class="text-xs text-gray-400">Break down your daily chapter targets and PYQ sprints.</p>
+                            <h2 class="text-base font-extrabold text-white">Today's Target Queue</h2>
+                            <p class="text-xs text-slate-400">Plan your daily Revision [R] and Practice [P] chapter targets.</p>
                         </div>
-                        <button onclick="clearCompletedDaily()" class="text-xs text-rose-400 hover:underline">Clear Completed</button>
+                        <button onclick="clearCompletedDaily()" class="text-xs text-rose-400 hover:underline font-semibold">Clear Completed</button>
                     </div>
 
                     <div class="flex gap-2">
-                        <input type="text" id="daily-input" placeholder="e.g., Electrostatics: Revise Short Notes + 50 JEE Main PYQs..." class="flex-grow bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
-                        <select id="daily-tag" class="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-300">
+                        <input type="text" id="daily-input" placeholder="e.g., 13. Electric Charges & Fields: Complete Revision [R] + 50 PYQs [P]..." class="flex-grow bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
+                        <select id="daily-tag" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200">
                             <option value="Physics">Physics</option>
                             <option value="Chemistry">Chemistry</option>
                             <option value="Math">Math</option>
                             <option value="Mock/Analysis">Mock/Analysis</option>
                         </select>
-                        <button onclick="addDailyTask()" class="bg-sky-600 hover:bg-sky-500 text-white font-semibold px-4 py-2 rounded-lg text-sm transition">Add</button>
+                        <button onclick="addDailyTask()" class="bg-sky-600 hover:bg-sky-500 text-white font-bold px-4 py-2 rounded-xl text-sm transition">Add</button>
                     </div>
 
                     <ul id="daily-list" class="space-y-2 max-h-96 overflow-y-auto custom-scroll pr-1"></ul>
                 </div>
 
-                <div class="glass p-5 rounded-xl space-y-4 border border-indigo-500/20">
-                    <h3 class="text-base font-bold text-indigo-400">Daily Execution Architecture</h3>
+                <div class="glass-card p-5 rounded-2xl space-y-4 border border-indigo-500/20">
+                    <h3 class="text-base font-extrabold text-indigo-400">High-Efficiency Execution System</h3>
                     <div class="space-y-3 text-xs">
-                        <div class="p-3 bg-gray-900/80 rounded-lg border border-gray-800">
-                            <span class="font-bold text-amber-400 block mb-1">MODE A: SYLLABUS & PYQ MASTERY</span>
-                            <ul class="space-y-1.5 text-gray-300 list-disc pl-4">
-                                <li><strong>Slot 1 (3.5 hrs):</strong> Physics Ch. Theory + 45 Selected PYQs (2021-2026).</li>
-                                <li><strong>Slot 2 (3.5 hrs):</strong> Math Ch. Concept Review + 40 Timed PYQs.</li>
-                                <li><strong>Slot 3 (3.5 hrs):</strong> Chemistry Mechanism/NCERT + 60 PYQs.</li>
-                                <li><strong>Night (1.5 hrs):</strong> Formula & Reaction Sheet active recall.</li>
-                            </ul>
+                        <div class="p-3.5 bg-slate-900/80 rounded-xl border border-slate-800">
+                            <span class="font-bold text-sky-400 block mb-1">[ R ] REVISION PROTOCOL</span>
+                            <p class="text-slate-300 leading-relaxed">Condense each chapter into a 2-page formula/mechanism sheet. Review all standard derivations, named reactions, and NCERT exceptions before marking <strong>[ R ]</strong>.</p>
                         </div>
-                        <div class="p-3 bg-gray-900/80 rounded-lg border border-gray-800">
-                            <span class="font-bold text-rose-400 block mb-1">MODE B: HIGH-FREQUENCY MOCK SPRINT</span>
-                            <ul class="space-y-1.5 text-gray-300 list-disc pl-4">
-                                <li><strong>9:00 AM – 12:00 PM:</strong> Full Mock #1 (Morning Shift)</li>
-                                <li><strong>2:00 PM – 5:00 PM:</strong> Full Mock #2 or Targeted Weak-Topic Patching</li>
-                                <li><strong>6:30 PM – 10:30 PM:</strong> Deep Error Post-Mortem of every wrong/unattempted question.</li>
-                            </ul>
+                        <div class="p-3.5 bg-slate-900/80 rounded-xl border border-slate-800">
+                            <span class="font-bold text-indigo-400 block mb-1">[ P ] PRACTICE PROTOCOL</span>
+                            <p class="text-slate-300 leading-relaxed">Solve at least 40–60 timed JEE Main PYQs (2021–2026) with >80% accuracy before locking <strong>[ P ]</strong> for any chapter.</p>
                         </div>
                     </div>
                 </div>
@@ -397,34 +447,31 @@
     </main>
 
     <!-- MODAL 1: INSPECT STUDENT PROGRESS & MOCKS -->
-    <div id="inspect-modal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="glass max-w-3xl w-full rounded-2xl border border-gray-700 p-6 space-y-5 max-h-[88vh] flex flex-col">
-            <div class="flex justify-between items-start border-b border-gray-800 pb-3">
+    <div id="inspect-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass max-w-4xl w-full rounded-2xl border border-slate-700 p-6 space-y-5 max-h-[88vh] flex flex-col">
+            <div class="flex justify-between items-start border-b border-slate-800 pb-3">
                 <div>
                     <div class="flex items-center gap-2">
-                        <h3 id="inspect-name" class="text-lg font-bold text-white">Student Name</h3>
-                        <span id="inspect-role-badge" class="text-[10px] px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-bold">COMPETITOR</span>
+                        <h3 id="inspect-name" class="text-lg font-extrabold text-white">Student Name</h3>
+                        <span class="text-[10px] px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-bold">SQUAD MEMBER</span>
                     </div>
-                    <p id="inspect-subtitle" class="text-xs text-gray-400 mt-0.5">Detailed Syllabus & Mock Test Breakdown</p>
+                    <p id="inspect-subtitle" class="text-xs text-slate-400 mt-0.5">Detailed 68-Chapter [R + P] & Mock Test Breakdown</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button id="inspect-kick-btn" class="hidden bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 text-xs font-semibold px-3 py-1.5 rounded-lg transition">
-                        ✕ Remove from Squad
+                    <button id="inspect-kick-btn" class="hidden bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition">
+                        🗑️ Remove Student
                     </button>
-                    <button onclick="closeInspectModal()" class="text-gray-400 hover:text-white text-lg px-2">✕</button>
+                    <button onclick="closeInspectModal()" class="text-slate-400 hover:text-white text-lg px-2">✕</button>
                 </div>
             </div>
 
             <div class="overflow-y-auto custom-scroll space-y-5 pr-1">
-                <!-- Summary Cards -->
                 <div id="inspect-summary-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center"></div>
-
-                <!-- Recent Mocks Table -->
                 <div>
                     <h4 class="text-xs font-bold uppercase text-purple-400 mb-2">Recent Mock Tests Logged</h4>
-                    <div class="overflow-x-auto border border-gray-800 rounded-lg">
+                    <div class="overflow-x-auto border border-slate-800 rounded-xl">
                         <table class="w-full text-left text-xs">
-                            <thead class="bg-gray-900/90 text-gray-400">
+                            <thead class="bg-slate-900/90 text-slate-400">
                                 <tr>
                                     <th class="py-2 px-3">Date</th>
                                     <th class="py-2 px-3">Mock Name</th>
@@ -434,319 +481,715 @@
                                     <th class="py-2 px-3">Total</th>
                                 </tr>
                             </thead>
-                            <tbody id="inspect-mocks-tbody" class="divide-y divide-gray-800/60"></tbody>
+                            <tbody id="inspect-mocks-tbody" class="divide-y divide-slate-800/60"></tbody>
                         </table>
                     </div>
                 </div>
-
-                <!-- Completed / In-Progress Chapters -->
                 <div>
-                    <h4 class="text-xs font-bold uppercase text-emerald-400 mb-2">Chapter Progression Breakdown</h4>
+                    <h4 class="text-xs font-bold uppercase text-emerald-400 mb-2">68-Chapter [ R ] Revision & [ P ] Practice Status</h4>
                     <div id="inspect-chapters-list" class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL 2: LEADER / HOST SETTINGS MODAL -->
-    <div id="host-modal" class="fixed inset-0 z-50 hidden bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="glass max-w-md w-full rounded-2xl border border-amber-500/30 p-6 space-y-4">
-            <div class="flex justify-between items-center border-b border-gray-800 pb-3">
-                <h3 class="text-base font-bold text-amber-400 flex items-center gap-2">👑 Leader / Host Account Controls</h3>
-                <button onclick="closeHostModal()" class="text-gray-400 hover:text-white">✕</button>
+    <!-- MODAL 2: HOST / LEADER SETTINGS -->
+    <div id="host-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="glass max-w-md w-full rounded-2xl border border-amber-500/40 p-6 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-base font-extrabold text-amber-400">👑 Leader (Host) Account Panel</h3>
+                <button onclick="closeHostModal()" class="text-slate-400 hover:text-white">✕</button>
             </div>
-
-            <div id="host-modal-content" class="space-y-4 text-xs text-gray-300">
-                <!-- Populated dynamically -->
-            </div>
+            <div id="host-modal-content" class="space-y-4 text-xs text-slate-300"></div>
         </div>
     </div>
 
     <!-- MODAL 3: WELCOME FRIEND JOIN PROMPT -->
     <div id="welcome-modal" class="fixed inset-0 z-50 hidden bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
         <div class="glass max-w-md w-full rounded-2xl border border-indigo-500/40 p-6 space-y-4 text-center">
-            <div class="w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center mx-auto text-2xl font-extrabold">99+</div>
-            <h3 class="text-lg font-bold text-white">Join JEE 2027 Competitor Squad</h3>
-            <p class="text-xs text-gray-400">You have been invited to Room <strong id="welcome-room-name" class="text-sky-400 mono"></strong>. Enter your name below so your friends can see your live syllabus and mock test progress!</p>
-            <input id="welcome-name-input" type="text" placeholder="Enter Your Name (e.g., Rohan)" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white text-center font-bold focus:outline-none focus:border-sky-500">
-            <button onclick="confirmWelcomeJoin()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-lg text-sm transition shadow-lg shadow-indigo-600/30">
+            <div class="w-12 h-12 rounded-xl bg-indigo-600/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center mx-auto text-2xl font-black">99+</div>
+            <h3 class="text-lg font-extrabold text-white">Join JEE 2027 Live Squad</h3>
+            <p class="text-xs text-slate-400">Enter your name below so your friends can see your live 68-chapter syllabus and mock test progression!</p>
+            <input id="welcome-name-input" type="text" placeholder="Enter Your Name (e.g., Rohan)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white text-center font-bold focus:outline-none focus:border-sky-500">
+            <button onclick="confirmWelcomeJoin()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-lg shadow-indigo-600/30">
                 🚀 Join Live Leaderboard
             </button>
         </div>
     </div>
 
     <script>
-        // --- 1. COMPLETE JEE MAIN SYLLABUS DATA ---
+        // --- 1. EXACT 68-CHAPTER JEE MAIN SYLLABUS FROM UPLOADED PDF [R = Revision, P = Practice] ---
         const DEFAULT_SYLLABUS = {
             Physics: [
-                { id: "p1", name: "Electrostatics & Capacitors", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "p2", name: "Current Electricity", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "p3", name: "Moving Charges & Magnetism", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "p4", name: "EMI & Alternating Current", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "p5", name: "Ray & Wave Optics", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "p6", name: "Modern Physics & Semiconductors", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "p7", name: "Thermodynamics & KTG", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "p8", name: "Kinematics & Laws of Motion", p: "MED", t: false, pyq: false, adv: false },
-                { id: "p9", name: "Work, Power, Energy & Circular", p: "MED", t: false, pyq: false, adv: false },
-                { id: "p10", name: "Center of Mass & Rotational Motion", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "p11", name: "Gravitation", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "p12", name: "Properties of Solids & Fluids", p: "MED", t: false, pyq: false, adv: false },
-                { id: "p13", name: "SHM & Waves", p: "MED", t: false, pyq: false, adv: false },
-                { id: "p14", name: "Units, Dimensions & EM Waves", p: "HIGH", t: false, pyq: false, adv: false }
+                // CLASS 11 & MECHANICS (01 - 12)
+                { id: "p01", num: "01", sec: "CLASS 11 & MECHANICS", name: "Units & Measurements", r: false, p: false },
+                { id: "p02", num: "02", sec: "CLASS 11 & MECHANICS", name: "Kinematics (1D & 2D)", r: false, p: false },
+                { id: "p03", num: "03", sec: "CLASS 11 & MECHANICS", name: "Laws of Motion", r: false, p: false },
+                { id: "p04", num: "04", sec: "CLASS 11 & MECHANICS", name: "Work, Energy & Power", r: false, p: false },
+                { id: "p05", num: "05", sec: "CLASS 11 & MECHANICS", name: "Rotational Motion & COM", r: false, p: false },
+                { id: "p06", num: "06", sec: "CLASS 11 & MECHANICS", name: "Gravitation", r: false, p: false },
+                { id: "p07", num: "07", sec: "CLASS 11 & MECHANICS", name: "Mechanical Prop. of Solids", r: false, p: false },
+                { id: "p08", num: "08", sec: "CLASS 11 & MECHANICS", name: "Mechanical Prop. of Fluids", r: false, p: false },
+                { id: "p09", num: "09", sec: "CLASS 11 & MECHANICS", name: "Thermal Properties & KTG", r: false, p: false },
+                { id: "p10", num: "10", sec: "CLASS 11 & MECHANICS", name: "Thermodynamics", r: false, p: false },
+                { id: "p11", num: "11", sec: "CLASS 11 & MECHANICS", name: "Oscillations (SHM)", r: false, p: false },
+                { id: "p12", num: "12", sec: "CLASS 11 & MECHANICS", name: "Waves & Sound", r: false, p: false },
+                // CLASS 12 & MODERN PHYSICS (13 - 26)
+                { id: "p13", num: "13", sec: "CLASS 12 & MODERN PHYSICS", name: "Electric Charges & Fields", r: false, p: false },
+                { id: "p14", num: "14", sec: "CLASS 12 & MODERN PHYSICS", name: "Electrostatic Potential & Cap.", r: false, p: false },
+                { id: "p15", num: "15", sec: "CLASS 12 & MODERN PHYSICS", name: "Current Electricity", r: false, p: false },
+                { id: "p16", num: "16", sec: "CLASS 12 & MODERN PHYSICS", name: "Moving Charges & Magnetism", r: false, p: false },
+                { id: "p17", num: "17", sec: "CLASS 12 & MODERN PHYSICS", name: "Magnetism & Matter", r: false, p: false },
+                { id: "p18", num: "18", sec: "CLASS 12 & MODERN PHYSICS", name: "Electromagnetic Induction", r: false, p: false },
+                { id: "p19", num: "19", sec: "CLASS 12 & MODERN PHYSICS", name: "Alternating Current (AC)", r: false, p: false },
+                { id: "p20", num: "20", sec: "CLASS 12 & MODERN PHYSICS", name: "Electromagnetic Waves", r: false, p: false },
+                { id: "p21", num: "21", sec: "CLASS 12 & MODERN PHYSICS", name: "Ray Optics & Optical Instr.", r: false, p: false },
+                { id: "p22", num: "22", sec: "CLASS 12 & MODERN PHYSICS", name: "Wave Optics", r: false, p: false },
+                { id: "p23", num: "23", sec: "CLASS 12 & MODERN PHYSICS", name: "Dual Nature of Matter & Rad.", r: false, p: false },
+                { id: "p24", num: "24", sec: "CLASS 12 & MODERN PHYSICS", name: "Atoms & Nuclei", r: false, p: false },
+                { id: "p25", num: "25", sec: "CLASS 12 & MODERN PHYSICS", name: "Electronic Devices (Semicond.)", r: false, p: false },
+                { id: "p26", num: "26", sec: "CLASS 12 & MODERN PHYSICS", name: "Experimental Physics Skills", r: false, p: false }
             ],
             Chemistry: [
-                { id: "c1", name: "GOC & Isomerism", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "c2", name: "Hydrocarbons & Haloalkanes", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "c3", name: "Alcohols, Phenols, Ethers & Carbonyls", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "c4", name: "Amines & Biomolecules", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "c5", name: "Chemical Bonding & Molecular Structure", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "c6", name: "Coordination Compounds", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "c7", name: "d & f Block Elements", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "c8", name: "Periodic Table & p-Block (NCERT)", p: "MED", t: false, pyq: false, adv: false },
-                { id: "c9", name: "Electrochemistry & Redox", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "c10", name: "Chemical Kinetics", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "c11", name: "Solutions & Colligative Properties", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "c12", name: "Thermodynamics & Thermochemistry", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "c13", name: "Mole Concept & Atomic Structure", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "c14", name: "Chemical & Ionic Equilibrium", p: "MED", t: false, pyq: false, adv: false },
-                { id: "c15", name: "Practical Organic & Salt Analysis", p: "MED", t: false, pyq: false, adv: false }
+                // PHYSICAL CHEMISTRY (01 - 07)
+                { id: "c01", num: "01", sec: "PHYSICAL CHEMISTRY", name: "Some Basic Concepts (Mole)", r: false, p: false },
+                { id: "c02", num: "02", sec: "PHYSICAL CHEMISTRY", name: "Atomic Structure", r: false, p: false },
+                { id: "c03", num: "03", sec: "PHYSICAL CHEMISTRY", name: "Chemical Thermodynamics", r: false, p: false },
+                { id: "c04", num: "04", sec: "PHYSICAL CHEMISTRY", name: "Chemical & Ionic Equilibrium", r: false, p: false },
+                { id: "c05", num: "05", sec: "PHYSICAL CHEMISTRY", name: "Solutions & Colligative Prop.", r: false, p: false },
+                { id: "c06", num: "06", sec: "PHYSICAL CHEMISTRY", name: "Redox & Electrochemistry", r: false, p: false },
+                { id: "c07", num: "07", sec: "PHYSICAL CHEMISTRY", name: "Chemical Kinetics", r: false, p: false },
+                // INORGANIC CHEMISTRY (08 - 12)
+                { id: "c08", num: "08", sec: "INORGANIC CHEMISTRY", name: "Classification & Periodicity", r: false, p: false },
+                { id: "c09", num: "09", sec: "INORGANIC CHEMISTRY", name: "Chemical Bonding & Mol. Str.", r: false, p: false },
+                { id: "c10", num: "10", sec: "INORGANIC CHEMISTRY", name: "p-Block Elements (Gr 13–18)", r: false, p: false },
+                { id: "c11", num: "11", sec: "INORGANIC CHEMISTRY", name: "d- and f-Block Elements", r: false, p: false },
+                { id: "c12", num: "12", sec: "INORGANIC CHEMISTRY", name: "Coordination Compounds", r: false, p: false },
+                // ORGANIC CHEMISTRY (13 - 21)
+                { id: "c13", num: "13", sec: "ORGANIC CHEMISTRY", name: "Purification & Characterisation", r: false, p: false },
+                { id: "c14", num: "14", sec: "ORGANIC CHEMISTRY", name: "Basic Principles (GOC & Isom.)", r: false, p: false },
+                { id: "c15", num: "15", sec: "ORGANIC CHEMISTRY", name: "Hydrocarbons", r: false, p: false },
+                { id: "c16", num: "16", sec: "ORGANIC CHEMISTRY", name: "Haloalkanes & Haloarenes", r: false, p: false },
+                { id: "c17", num: "17", sec: "ORGANIC CHEMISTRY", name: "Alcohols, Phenols & Ethers", r: false, p: false },
+                { id: "c18", num: "18", sec: "ORGANIC CHEMISTRY", name: "Aldehydes, Ketones & Acids", r: false, p: false },
+                { id: "c19", num: "19", sec: "ORGANIC CHEMISTRY", name: "Organic Comp. with Nitrogen", r: false, p: false },
+                { id: "c20", num: "20", sec: "ORGANIC CHEMISTRY", name: "Biomolecules", r: false, p: false },
+                { id: "c21", num: "21", sec: "ORGANIC CHEMISTRY", name: "Practical Chemistry Principles", r: false, p: false }
             ],
             Mathematics: [
-                { id: "m1", name: "Vectors & 3D Geometry", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "m2", name: "Matrices & Determinants", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "m3", name: "Definite Integration & Area", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "m4", name: "Differential Equations", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "m5", name: "Functions, Limits, Continuity & Diff.", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "m6", name: "Application of Derivatives (AOD)", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "m7", name: "Sequences & Series", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "m8", name: "Binomial Theorem", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "m9", name: "Permutations, Combinations & Probability", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "m10", name: "Straight Lines & Circles", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "m11", name: "Conic Sections (Parabola, Ellipse, Hyperbola)", p: "MED", t: false, pyq: false, adv: false },
-                { id: "m12", name: "Complex Numbers & Quadratic Eq.", p: "MED", t: false, pyq: false, adv: false },
-                { id: "m13", name: "Sets, Relations & Statistics", p: "HIGH", t: false, pyq: false, adv: false },
-                { id: "m14", name: "Trigonometry & Indefinite Integration", p: "MED", t: false, pyq: false, adv: false }
+                // ALGEBRA & TRIGONOMETRY (01 - 08)
+                { id: "m01", num: "01", sec: "ALGEBRA & TRIGONOMETRY", name: "Sets, Relations & Functions", r: false, p: false },
+                { id: "m02", num: "02", sec: "ALGEBRA & TRIGONOMETRY", name: "Complex Numbers", r: false, p: false },
+                { id: "m03", num: "03", sec: "ALGEBRA & TRIGONOMETRY", name: "Quadratic Equations", r: false, p: false },
+                { id: "m04", num: "04", sec: "ALGEBRA & TRIGONOMETRY", name: "Matrices & Determinants", r: false, p: false },
+                { id: "m05", num: "05", sec: "ALGEBRA & TRIGONOMETRY", name: "Permutations & Combinations", r: false, p: false },
+                { id: "m06", num: "06", sec: "ALGEBRA & TRIGONOMETRY", name: "Binomial Theorem", r: false, p: false },
+                { id: "m07", num: "07", sec: "ALGEBRA & TRIGONOMETRY", name: "Sequence & Series", r: false, p: false },
+                { id: "m08", num: "08", sec: "ALGEBRA & TRIGONOMETRY", name: "Trigonometric Functions & ITF", r: false, p: false },
+                // CALCULUS (09 - 14)
+                { id: "m09", num: "09", sec: "CALCULUS", name: "Limits & Continuity", r: false, p: false },
+                { id: "m10", num: "10", sec: "CALCULUS", name: "Differentiability & Diff.", r: false, p: false },
+                { id: "m11", num: "11", sec: "CALCULUS", name: "Application of Derivatives", r: false, p: false },
+                { id: "m12", num: "12", sec: "CALCULUS", name: "Indefinite Integration", r: false, p: false },
+                { id: "m13", num: "13", sec: "CALCULUS", name: "Definite Integration & Area", r: false, p: false },
+                { id: "m14", num: "14", sec: "CALCULUS", name: "Differential Equations", r: false, p: false },
+                // COORDINATE, VECTORS & STATS (15 - 21)
+                { id: "m15", num: "15", sec: "COORDINATE, VECTORS & STATS", name: "Straight Lines", r: false, p: false },
+                { id: "m16", num: "16", sec: "COORDINATE, VECTORS & STATS", name: "Circles", r: false, p: false },
+                { id: "m17", num: "17", sec: "COORDINATE, VECTORS & STATS", name: "Conic Sections (P, E, H)", r: false, p: false },
+                { id: "m18", num: "18", sec: "COORDINATE, VECTORS & STATS", name: "Vector Algebra", r: false, p: false },
+                { id: "m19", num: "19", sec: "COORDINATE, VECTORS & STATS", name: "Three-Dimensional Geometry", r: false, p: false },
+                { id: "m20", num: "20", sec: "COORDINATE, VECTORS & STATS", name: "Statistics", r: false, p: false },
+                { id: "m21", num: "21", sec: "COORDINATE, VECTORS & STATS", name: "Probability", r: false, p: false }
             ]
         };
 
-        // --- 2. STATE & MULTIPLAYER IDENTITY MANAGEMENT ---
+        // --- 2. STATE & MIGRATION MANAGEMENT ---
         const urlParams = new URLSearchParams(window.location.search);
         const roomFromUrl = urlParams.get('room');
-        const hostFromUrl = urlParams.get('host');
+        const invitedGuest = urlParams.get('guest') === '1';
 
-        let state = JSON.parse(localStorage.getItem('jee2027_command_state')) || {
-            playerId: 'usr_' + Math.random().toString(36).substring(2, 10),
-            playerName: '',
-            roomCode: roomFromUrl ? roomFromUrl.toUpperCase() : 'JEE2027-SQUAD',
-            isHost: !hostFromUrl, // If you didn't come via someone else's invite link, you start as Host!
-            hostId: hostFromUrl || null,
-            hostPin: '2027',
-            kickedIds: [],
-            syllabus: DEFAULT_SYLLABUS,
-            dailyTasks: [
-                { id: 1, text: "Electrostatics: Revise Formula Sheet + Solve 40 JEE Main PYQs (2022-2026)", tag: "Physics", done: false },
-                { id: 2, text: "Vectors & 3D: Complete Theory Notes + 35 PYQs", tag: "Math", done: false },
-                { id: 3, text: "GOC & Isomerism: Mechanism Revision + 50 PYQs", tag: "Chemistry", done: false }
-            ],
-            mocks: [],
-            competitors: {}
-        };
+        const legacyState = JSON.parse(localStorage.getItem('jee2027_command_state') || 'null');
+        let state = JSON.parse(localStorage.getItem('jee2027_v6_rp_state') || 'null');
 
-        // Upgrade legacy state safely
-        if (!state.playerId) state.playerId = 'usr_' + Math.random().toString(36).substring(2, 10);
-        if (roomFromUrl && roomFromUrl.toUpperCase() !== state.roomCode) {
-            state.roomCode = roomFromUrl.toUpperCase();
-            state.competitors = {};
+        if (!state) {
+            state = {
+                playerId: legacyState?.playerId || ('usr_' + Math.random().toString(36).substring(2, 10)),
+                playerName: legacyState?.playerName || '',
+                roomCode: roomFromUrl ? roomFromUrl.toUpperCase() : (legacyState?.roomCode || 'JEE2027-SQUAD'),
+                isHost: legacyState?.isHost !== undefined ? legacyState.isHost : !invitedGuest,
+                hostPin: legacyState?.hostPin || '2027',
+                kickedIds: legacyState?.kickedIds || [],
+                syllabus: JSON.parse(JSON.stringify(DEFAULT_SYLLABUS)),
+                dailyTasks: legacyState?.dailyTasks || [
+                    { id: 1, text: "01. Units & Measurements: Complete Revision [R] + 45 PYQs [P]", tag: "Physics", done: false },
+                    { id: "2", text: "01. Sets, Relations & Functions: Revision [R] + Practice [P]", tag: "Math", done: false },
+                    { id: "3", text: "14. Basic Principles (GOC & Isom.): Revision [R] + Practice [P]", tag: "Chemistry", done: false }
+                ],
+                mocks: legacyState?.mocks || [],
+                competitors: {}
+            };
         }
-        if (!state.roomCode) state.roomCode = 'JEE2027-SQUAD';
+
+        if (roomFromUrl) state.roomCode = roomFromUrl.toUpperCase();
+        if (!state.roomCode || state.roomCode === 'GLOBAL') state.roomCode = 'JEE2027-SQUAD';
         if (!state.competitors) state.competitors = {};
         if (!state.kickedIds) state.kickedIds = [];
-        if (!state.hostPin) state.hostPin = '2027';
-
-        // Determine Host / Leader ownership
-        if (hostFromUrl && hostFromUrl !== state.playerId) {
-            state.hostId = hostFromUrl;
-            state.isHost = false;
-        } else if (!state.hostId) {
-            state.hostId = state.playerId;
+        if (state.playerName && state.playerName.toLowerCase().includes('arghya')) {
             state.isHost = true;
         }
 
-        // Check if invited user needs to set their name
         if (!state.playerName || state.playerName.startsWith('Aspirant_')) {
-            if (roomFromUrl) {
-                setTimeout(() => {
-                    document.getElementById('welcome-room-name').innerText = state.roomCode;
-                    document.getElementById('welcome-modal').classList.remove('hidden');
-                }, 300);
-            } else if (!state.playerName) {
-                state.playerName = 'Arghya';
-            }
+            setTimeout(() => {
+                document.getElementById('welcome-modal').classList.remove('hidden');
+            }, 250);
         }
 
         function confirmWelcomeJoin() {
             const val = document.getElementById('welcome-name-input').value.trim();
             if (!val) return alert("Please enter your name!");
             state.playerName = val;
+            if (val.toLowerCase().includes('arghya')) state.isHost = true;
             document.getElementById('player-name-input').value = val;
             document.getElementById('welcome-modal').classList.add('hidden');
+            updateHostUI();
             saveState();
-            switchTab('tab-leaderboard');
         }
 
         function saveState() {
-            localStorage.setItem('jee2027_command_state', JSON.stringify(state));
+            localStorage.setItem('jee2027_v6_rp_state', JSON.stringify(state));
             updateDashboardMetrics();
             broadcastMyStats();
         }
 
-        // --- 3. REAL-TIME MULTIPLAYER ENGINE (DUAL MQTT WEBSOCKETS + RETAINED STATE) ---
-        const BROKERS = [
-            'wss://broker.emqx.io:8084/mqtt',
-            'wss://broker.hivemq.com:8884/mqtt'
-        ];
-        let mqttClients = [];
-        let connectedCount = 0;
+        // --- 3. RENDER 68-CHAPTER SYLLABUS WITH [R] & [P] INTERACTIVE PILLS ---
+        function renderSyllabus() {
+            const container = document.getElementById('syllabus-container');
+            const filter = document.getElementById('filter-status')?.value || 'ALL';
+            const search = (document.getElementById('syllabus-search')?.value || '').trim().toLowerCase();
+            container.innerHTML = '';
 
-        function getTopicPrefix() {
-            return `jee2027_arena_v4/${state.roomCode}`;
+            const themes = {
+                Physics: {
+                    icon: '⚡', title: '1. PHYSICS',
+                    border: 'border-sky-500/30', badge: 'text-sky-400',
+                    bar: 'from-sky-500 to-cyan-400', secBg: 'bg-sky-500/10 text-sky-300 border-sky-500/25'
+                },
+                Chemistry: {
+                    icon: '🧪', title: '2. CHEMISTRY',
+                    border: 'border-emerald-500/30', badge: 'text-emerald-400',
+                    bar: 'from-emerald-500 to-teal-400', secBg: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25'
+                },
+                Mathematics: {
+                    icon: '📐', title: '3. MATHEMATICS',
+                    border: 'border-amber-500/30', badge: 'text-amber-400',
+                    bar: 'from-amber-500 to-orange-400', secBg: 'bg-amber-500/10 text-amber-300 border-amber-500/25'
+                }
+            };
+
+            Object.keys(state.syllabus).forEach(subject => {
+                const allChapters = state.syllabus[subject];
+                const totalR = allChapters.filter(c => c.r).length;
+                const totalP = allChapters.filter(c => c.p).length;
+                const totalChecks = allChapters.length * 2;
+                const doneChecks = totalR + totalP;
+                const pct = Math.round((doneChecks / totalChecks) * 100) || 0;
+
+                // Filter chapters
+                const visibleChapters = allChapters.filter(ch => {
+                    if (search && !ch.name.toLowerCase().includes(search) && !ch.num.includes(search)) return false;
+                    if (filter === 'INCOMPLETE') return !(ch.r && ch.p);
+                    if (filter === 'NO_R') return !ch.r;
+                    if (filter === 'NO_P') return !ch.p;
+                    if (filter === 'COMPLETED') return (ch.r && ch.p);
+                    return true;
+                });
+
+                // Group visible chapters by section
+                const sections = {};
+                visibleChapters.forEach(ch => {
+                    if (!sections[ch.sec]) sections[ch.sec] = [];
+                    sections[ch.sec].push(ch);
+                });
+
+                const t = themes[subject];
+                const col = document.createElement('div');
+                col.className = `glass-card rounded-2xl p-4 flex flex-col border ${t.border} shadow-xl`;
+
+                let sectionsHtml = '';
+                Object.keys(sections).forEach(secName => {
+                    const secChs = sections[secName];
+                    sectionsHtml += `
+                        <div class="mt-2.5 first:mt-0">
+                            <div class="px-2.5 py-1 rounded-lg border text-[10px] font-extrabold uppercase tracking-wider ${t.secBg} mb-1.5 flex justify-between items-center">
+                                <span>${secName}</span>
+                                <span class="mono opacity-80">${secChs.length} Ch</span>
+                            </div>
+                            <div class="space-y-1.5">
+                                ${secChs.map(ch => {
+                                    const locked = ch.r && ch.p;
+                                    return `
+                                    <div class="grid grid-cols-12 items-center py-2 px-2.5 rounded-xl text-xs border transition ${locked ? 'bg-emerald-950/25 border-emerald-500/30 text-slate-300' : 'bg-slate-900/75 border-slate-800/80 hover:border-slate-700'}">
+                                        <div class="col-span-8 pr-2 flex items-center gap-2">
+                                            <span class="mono text-[10px] font-bold px-1.5 py-0.5 rounded ${locked ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'}">${ch.num}</span>
+                                            <span class="${locked ? 'line-through text-slate-400' : 'text-slate-100 font-semibold'} leading-tight">${ch.name}</span>
+                                        </div>
+                                        <div class="col-span-2 flex justify-center">
+                                            <button onclick="toggleChapter('${subject}', '${ch.id}', 'r')" class="rp-btn w-11 py-1 rounded-lg mono text-[11px] font-extrabold border ${ch.r ? 'bg-sky-500/25 border-sky-400 text-sky-300 shadow-sm shadow-sky-500/20' : 'bg-slate-950/90 border-slate-700/80 text-slate-500 hover:text-slate-300'}" title="Toggle Revision Completed">
+                                                ${ch.r ? '✓ R' : 'R'}
+                                            </button>
+                                        </div>
+                                        <div class="col-span-2 flex justify-center">
+                                            <button onclick="toggleChapter('${subject}', '${ch.id}', 'p')" class="rp-btn w-11 py-1 rounded-lg mono text-[11px] font-extrabold border ${ch.p ? 'bg-indigo-500/25 border-indigo-400 text-indigo-300 shadow-sm shadow-indigo-500/20' : 'bg-slate-950/90 border-slate-700/80 text-slate-500 hover:text-slate-300'}" title="Toggle Practice Completed">
+                                                ${ch.p ? '✓ P' : 'P'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                col.innerHTML = `
+                    <!-- Subject Header -->
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h3 class="font-black text-base ${t.badge} flex items-center gap-1.5">
+                                <span>${t.icon}</span>
+                                <span>${t.title}</span>
+                            </h3>
+                            <div class="text-[11px] text-slate-400 mono mt-0.5">
+                                Rev [R]: <strong class="text-sky-400">${totalR}/${allChapters.length}</strong> • 
+                                Prac [P]: <strong class="text-indigo-400">${totalP}/${allChapters.length}</strong>
+                            </div>
+                        </div>
+                        <span class="mono text-xl font-black text-white">${pct}%</span>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="w-full bg-slate-800/90 h-2 rounded-full mb-3 overflow-hidden">
+                        <div class="bg-gradient-to-r ${t.bar} h-full transition-all duration-300" style="width: ${pct}%"></div>
+                    </div>
+
+                    <!-- Column Subheader -->
+                    <div class="grid grid-cols-12 text-[10px] uppercase font-extrabold text-slate-400 border-b border-slate-800 pb-2 mb-2 px-2">
+                        <div class="col-span-8">CHAPTER (${allChapters.length})</div>
+                        <div class="col-span-2 text-center text-sky-400" title="Revision Completed">[ R ]</div>
+                        <div class="col-span-2 text-center text-indigo-400" title="Practice Completed">[ P ]</div>
+                    </div>
+
+                    <!-- Scrollable Chapter Sections -->
+                    <div class="space-y-2 overflow-y-auto max-h-[540px] custom-scroll pr-1">
+                        ${sectionsHtml || `<div class="text-xs text-slate-500 text-center py-8">No chapters match your filter.</div>`}
+                    </div>
+                `;
+                container.appendChild(col);
+            });
+            updateDashboardMetrics();
+        }
+
+        function toggleChapter(subject, id, field) {
+            const ch = state.syllabus[subject].find(c => c.id === id);
+            if (ch) {
+                ch[field] = !ch[field];
+                saveState();
+                renderSyllabus();
+            }
+        }
+
+        // --- 4. DASHBOARD METRICS ---
+        function updateDashboardMetrics() {
+            let totalTasks = 0, completedTasks = 0, totalChapters = 0, completedChapters = 0;
+            let totalR = 0, totalP = 0;
+            const subStats = { Physics: 0, Chemistry: 0, Mathematics: 0 };
+
+            Object.keys(state.syllabus).forEach(sub => {
+                let subDone = 0;
+                const subTotal = state.syllabus[sub].length * 2;
+                state.syllabus[sub].forEach(ch => {
+                    totalChapters++;
+                    totalTasks += 2;
+                    if (ch.r) totalR++;
+                    if (ch.p) totalP++;
+                    const doneCount = (ch.r ? 1 : 0) + (ch.p ? 1 : 0);
+                    completedTasks += doneCount;
+                    subDone += doneCount;
+                    if (doneCount === 2) completedChapters++;
+                });
+                subStats[sub] = Math.round((subDone / subTotal) * 100) || 0;
+            });
+
+            const pct = Math.round((completedTasks / totalTasks) * 100) || 0;
+            document.getElementById('overall-pct').innerText = `${pct}%`;
+            document.getElementById('overall-count').innerText = `${completedTasks} / ${totalTasks}`;
+            document.getElementById('total-r-count').innerText = totalR;
+            document.getElementById('total-p-count').innerText = totalP;
+            document.getElementById('overall-bar').style.width = `${pct}%`;
+
+            document.getElementById('stat-p-pct').innerText = `${subStats.Physics}%`;
+            document.getElementById('stat-c-pct').innerText = `${subStats.Chemistry}%`;
+            document.getElementById('stat-m-pct').innerText = `${subStats.Mathematics}%`;
+            document.getElementById('chapters-left').innerText = `${completedChapters}/${totalChapters} Locked`;
+
+            const mocks = state.mocks;
+            document.getElementById('mock-count').innerText = `${mocks.length} Tests`;
+            if (mocks.length > 0) {
+                const avg = Math.round(mocks.reduce((acc, m) => acc + m.total, 0) / mocks.length);
+                const best = Math.max(...mocks.map(m => m.total));
+                document.getElementById('mock-avg').innerText = `${avg} / 300`;
+                document.getElementById('mock-best-top').innerText = `Best: ${best}`;
+            } else {
+                document.getElementById('mock-avg').innerText = `0 / 300`;
+                document.getElementById('mock-best-top').innerText = `Best: 0`;
+            }
+        }
+
+        // --- 5. TRIPLE-LAYER REAL-TIME SYNC (HTTPS PORT 443 NTFY SSE + DUAL WSS MQTT) ---
+        let ntfyEventSource = null;
+        let mqttClients = [];
+
+        function getCleanRoomTopic() {
+            return 'jee2027_live_v6_' + state.roomCode.replace(/[^a-zA-Z0-9_-]/g, '');
         }
 
         function initMultiplayerRoom() {
             document.getElementById('header-room-id').innerText = state.roomCode;
             document.getElementById('room-code-input').value = state.roomCode;
-            document.getElementById('player-name-input').value = state.playerName;
-            updateHostBadges();
+            document.getElementById('player-name-input').value = state.playerName || 'Arghya';
+            updateHostUI();
 
-            // Clean up existing MQTT clients if switching room
+            const topic = getCleanRoomTopic();
+
+            if (ntfyEventSource) { try { ntfyEventSource.close(); } catch(e){} }
+
+            // Fetch cached room history over standard HTTPS GET (Port 443)
+            fetch(`https://ntfy.sh/${topic}/json?poll=1&since=24h`)
+                .then(res => res.text())
+                .then(text => {
+                    const lines = text.split('\n').filter(Boolean);
+                    lines.forEach(line => {
+                        try {
+                            const wrapper = JSON.parse(line);
+                            if (wrapper.event === 'message' && wrapper.message) {
+                                handleIncomingSyncPacket(wrapper.message);
+                            }
+                        } catch (e) {}
+                    });
+                    renderLeaderboard();
+                })
+                .catch(() => {});
+
+            // Open live real-time HTTPS EventSource (Port 443)
+            try {
+                ntfyEventSource = new EventSource(`https://ntfy.sh/${topic}/sse`);
+                ntfyEventSource.onmessage = (evt) => {
+                    try {
+                        const wrapper = JSON.parse(evt.data);
+                        if (wrapper.event === 'message' && wrapper.message) {
+                            handleIncomingSyncPacket(wrapper.message);
+                        }
+                    } catch (e) {}
+                };
+            } catch (e) {}
+
+            // Retained MQTT over WebSockets
             mqttClients.forEach(c => { try { c.end(true); } catch(e){} });
             mqttClients = [];
-            connectedCount = 0;
 
-            const prefix = getTopicPrefix();
+            const brokers = [
+                'wss://mqtt.eclipseprojects.io:443/mqtt',
+                'wss://broker.emqx.io:8084/mqtt'
+            ];
 
-            BROKERS.forEach((brokerUrl, index) => {
+            brokers.forEach((url, idx) => {
                 try {
-                    const client = mqtt.connect(brokerUrl, {
-                        clientId: `jee_${state.playerId}_${index}_${Math.random().toString(16).slice(2, 6)}`,
+                    const client = mqtt.connect(url, {
+                        clientId: `jee6_${state.playerId}_${idx}_${Math.random().toString(16).slice(2, 6)}`,
                         clean: true,
-                        connectTimeout: 8000,
-                        reconnectPeriod: 3000
+                        connectTimeout: 7000,
+                        reconnectPeriod: 4000
                     });
 
                     client.on('connect', () => {
-                        connectedCount++;
-                        updateConnectionBadge();
-
-                        // Subscribe to all players in this room + room meta (host/kick commands)
-                        client.subscribe(`${prefix}/players/+`, { qos: 1 });
-                        client.subscribe(`${prefix}/meta`, { qos: 1 });
-
-                        // Immediately publish our own state with retain: true
-                        publishToClient(client);
+                        client.subscribe(`${topic}/players/+`, { qos: 1 });
+                        client.subscribe(`${topic}/events`, { qos: 1 });
+                        publishToMqttClient(client);
                     });
 
-                    client.on('close', () => {
-                        connectedCount = Math.max(0, connectedCount - 1);
-                        updateConnectionBadge();
-                    });
-
-                    client.on('message', (topic, messageBuffer) => {
-                        const raw = messageBuffer.toString();
-
-                        // Handle Room Meta (Host ID & Kicked Players List)
-                        if (topic === `${prefix}/meta`) {
-                            if (!raw) return;
-                            try {
-                                const meta = JSON.parse(raw);
-                                if (meta.hostId) {
-                                    state.hostId = meta.hostId;
-                                    state.isHost = (state.hostId === state.playerId);
-                                }
-                                if (Array.isArray(meta.kickedIds)) {
-                                    state.kickedIds = meta.kickedIds;
-                                    // Remove any kicked players from local table immediately
-                                    state.kickedIds.forEach(kId => {
-                                        delete state.competitors[kId];
-                                    });
-                                }
-                                updateHostBadges();
-                                renderLeaderboard();
-                            } catch (e) {}
-                            return;
-                        }
-
-                        // Handle Player Updates
-                        if (topic.startsWith(`${prefix}/players/`)) {
-                            const incomingPlayerId = topic.split('/').pop();
-
-                            // Empty payload means this player was removed/deleted
+                    client.on('message', (t, buf) => {
+                        const raw = buf.toString();
+                        if (t === `${topic}/events`) {
+                            handleIncomingSyncPacket(raw);
+                        } else if (t.startsWith(`${topic}/players/`)) {
+                            const pid = t.split('/').pop();
                             if (!raw || raw.trim() === '') {
-                                delete state.competitors[incomingPlayerId];
+                                delete state.competitors[pid];
                                 renderLeaderboard();
-                                return;
+                            } else {
+                                handleIncomingSyncPacket(raw);
                             }
-
-                            try {
-                                const data = JSON.parse(raw);
-                                if (!data || !data.id) return;
-
-                                // Ignore if player is in kicked list
-                                if (state.kickedIds.includes(data.id)) {
-                                    delete state.competitors[data.id];
-                                    renderLeaderboard();
-                                    return;
-                                }
-
-                                state.competitors[data.id] = data;
-                                localStorage.setItem('jee2027_command_state', JSON.stringify(state));
-                                renderLeaderboard();
-                            } catch (e) {}
                         }
                     });
 
                     mqttClients.push(client);
-                } catch (err) {
-                    console.warn("Broker connection error:", err);
-                }
+                } catch (e) {}
             });
+
+            setTimeout(() => {
+                broadcastMyStats();
+                sendSyncControlPacket({ type: 'REQUEST_ALL_PEERS' });
+            }, 600);
 
             renderLeaderboard();
         }
 
-        function updateConnectionBadge() {
-            const badge = document.getElementById('sync-status');
-            const dot = document.getElementById('net-dot');
-            if (connectedCount > 0) {
-                badge.className = "text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-semibold";
-                badge.innerText = `🟢 Live Real-Time Sync (${connectedCount}/${BROKERS.length} Relays)`;
-                dot.className = "w-2 h-2 rounded-full bg-emerald-400 live-dot";
-            } else {
-                badge.className = "text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-semibold";
-                badge.innerText = "Reconnecting Live Relays...";
-                dot.className = "w-2 h-2 rounded-full bg-amber-400 live-dot";
-            }
+        let lastReplyTime = 0;
+        function handleIncomingSyncPacket(rawJson) {
+            try {
+                const pkt = JSON.parse(rawJson);
+                if (!pkt) return;
+
+                if (pkt.type === 'KICK_PLAYER' && pkt.targetId) {
+                    if (!state.kickedIds.includes(pkt.targetId)) {
+                        state.kickedIds.push(pkt.targetId);
+                    }
+                    delete state.competitors[pkt.targetId];
+                    localStorage.setItem('jee2027_v6_rp_state', JSON.stringify(state));
+                    renderLeaderboard();
+                    return;
+                }
+
+                if (pkt.type === 'UNBAN_ALL') {
+                    state.kickedIds = [];
+                    localStorage.setItem('jee2027_v6_rp_state', JSON.stringify(state));
+                    broadcastMyStats();
+                    return;
+                }
+
+                if (pkt.type === 'REQUEST_ALL_PEERS' && pkt.senderId !== state.playerId) {
+                    if (Date.now() - lastReplyTime > 3000) {
+                        lastReplyTime = Date.now();
+                        broadcastMyStats();
+                    }
+                    return;
+                }
+
+                const player = pkt.player || pkt;
+                if (player && player.id && player.name) {
+                    if (state.kickedIds.includes(player.id)) {
+                        delete state.competitors[player.id];
+                        renderLeaderboard();
+                        return;
+                    }
+                    state.competitors[player.id] = player;
+                    localStorage.setItem('jee2027_v6_rp_state', JSON.stringify(state));
+                    renderLeaderboard(player.id);
+                }
+            } catch (e) {}
         }
 
-        function updateHostBadges() {
+        function sendSyncControlPacket(packetObj) {
+            packetObj.senderId = state.playerId;
+            const raw = JSON.stringify(packetObj);
+            const topic = getCleanRoomTopic();
+
+            fetch(`https://ntfy.sh/${topic}`, { method: 'POST', body: raw }).catch(() => {});
+            mqttClients.forEach(c => {
+                if (c && c.connected) c.publish(`${topic}/events`, raw, { qos: 1 });
+            });
+        }
+
+        function publishToMqttClient(client) {
+            if (!client || !client.connected) return;
+            if (state.kickedIds.includes(state.playerId)) return;
+            const topic = getCleanRoomTopic();
+            const myPayload = computeMyStatsPayload();
+            client.publish(`${topic}/players/${state.playerId}`, JSON.stringify(myPayload), { qos: 1, retain: true });
+        }
+
+        let ntfyDebounceTimer = null;
+        function broadcastMyStats() {
+            if (state.kickedIds.includes(state.playerId)) return;
+            const myPayload = computeMyStatsPayload();
+            state.competitors[state.playerId] = myPayload;
+
+            mqttClients.forEach(client => publishToMqttClient(client));
+
+            clearTimeout(ntfyDebounceTimer);
+            ntfyDebounceTimer = setTimeout(() => {
+                const topic = getCleanRoomTopic();
+                fetch(`https://ntfy.sh/${topic}`, {
+                    method: 'POST',
+                    body: JSON.stringify({ type: 'PLAYER_UPDATE', player: computeMyStatsPayload() })
+                }).catch(() => {});
+            }, 300);
+
+            renderLeaderboard();
+        }
+
+        function forceFullSync() {
+            broadcastMyStats();
+            sendSyncControlPacket({ type: 'REQUEST_ALL_PEERS' });
+            const badge = document.getElementById('sync-status');
+            badge.innerText = "⚡ Synced All Peers Live!";
+            setTimeout(() => {
+                badge.innerText = "🟢 Live Real-Time Sync Active";
+            }, 2000);
+        }
+
+        // --- 6. LEADER (HOST) ACCOUNT & REMOVE CAPABILITY ---
+        function updateHostUI() {
             const headerBadge = document.getElementById('host-header-badge');
-            const roleBadge = document.getElementById('role-status-badge');
+            const titleEl = document.getElementById('leader-status-title');
+            const descEl = document.getElementById('leader-status-desc');
+            const toggleBtn = document.getElementById('toggle-leader-btn');
+
             if (state.isHost) {
                 headerBadge.classList.remove('hidden');
-                roleBadge.className = "text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-0.5 rounded-full font-bold";
-                roleBadge.innerText = "👑 You are Room Leader (Host)";
+                titleEl.innerText = `👑 LEADER (HOST) ACCOUNT: ${(state.playerName || 'ARGHYA').toUpperCase()}`;
+                titleEl.className = "text-sm font-extrabold text-amber-300";
+                descEl.innerHTML = `You have full Leader permissions. Click <strong class="text-rose-400">🗑️ Remove</strong> in the table below to remove any student from this leaderboard.`;
+                toggleBtn.innerText = "👑 Host Settings";
             } else {
                 headerBadge.classList.add('hidden');
-                roleBadge.className = "text-[10px] bg-sky-500/10 text-sky-300 border border-sky-500/30 px-2.5 py-0.5 rounded-full font-semibold";
-                roleBadge.innerText = "Competitor Mode";
+                titleEl.innerText = "COMPETITOR ACCOUNT MODE";
+                titleEl.className = "text-sm font-extrabold text-sky-400";
+                descEl.innerHTML = `Your syllabus and mock scores sync live to the room. Are you the Room Leader? Click <strong>👑 Claim Leader</strong> on the right.`;
+                toggleBtn.innerText = "👑 Claim Leader (Host)";
+            }
+            renderLeaderboard();
+        }
+
+        function removeCompetitor(targetId, targetName) {
+            if (!state.isHost) {
+                alert("Only the Leader (Host) account can remove students. Click '👑 Claim Leader' at the top right if you are the Host.");
+                return;
+            }
+            if (targetId === state.playerId) {
+                alert("You cannot remove your own Leader account.");
+                return;
+            }
+            if (!confirm(`Remove "${targetName}" from the Leaderboard?`)) return;
+
+            if (!state.kickedIds.includes(targetId)) {
+                state.kickedIds.push(targetId);
+            }
+            delete state.competitors[targetId];
+            localStorage.setItem('jee2027_v6_rp_state', JSON.stringify(state));
+
+            const topic = getCleanRoomTopic();
+            sendSyncControlPacket({ type: 'KICK_PLAYER', targetId: targetId });
+
+            mqttClients.forEach(c => {
+                if (c && c.connected) {
+                    c.publish(`${topic}/players/${targetId}`, "", { qos: 1, retain: true });
+                }
+            });
+
+            closeInspectModal();
+            renderLeaderboard();
+        }
+
+        function addDemoCompetitor() {
+            const demoId = 'demo_' + Math.floor(100 + Math.random() * 900);
+            const names = ['Rohan (Test)', 'Aarav (Test)', 'Priya (Test)', 'Vikram (Test)'];
+            const randomName = names[Math.floor(Math.random() * names.length)];
+            const p = Math.floor(55 + Math.random() * 35);
+            const c = Math.floor(60 + Math.random() * 30);
+            const m = Math.floor(45 + Math.random() * 40);
+            const tot = p + c + m;
+
+            const demoPlayer = {
+                id: demoId,
+                name: randomName,
+                isHost: false,
+                overallPct: Math.floor(15 + Math.random() * 45),
+                pPct: Math.floor(20 + Math.random() * 40),
+                cPct: Math.floor(15 + Math.random() * 40),
+                mPct: Math.floor(10 + Math.random() * 40),
+                mockCount: 1,
+                sumP: p, sumC: c, sumM: m,
+                grandTotal: tot,
+                avgP: p, avgC: c, avgM: m,
+                mockAvg: tot,
+                mockBest: tot,
+                lastMockName: 'Mock #1 (Full Syllabus)',
+                lastMockScore: tot,
+                lastMockP: p, lastMockC: c, lastMockM: m,
+                recentMocks: [{ d: new Date().toISOString().split('T')[0], n: 'Mock #1 (Full Syllabus)', p, c, m, t: tot }],
+                ch: { p01: [1,1], p02: [1,0], c01: [1,1], m01: [1,1] },
+                updatedAt: Date.now()
+            };
+
+            state.competitors[demoId] = demoPlayer;
+            localStorage.setItem('jee2027_v6_rp_state', JSON.stringify(state));
+            renderLeaderboard(demoId);
+        }
+
+        function toggleLeaderMode() {
+            const container = document.getElementById('host-modal-content');
+            if (state.isHost) {
+                container.innerHTML = `
+                    <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200">
+                        <strong>👑 Leader Mode Active:</strong> Your account (<strong>${state.playerName || 'Arghya'}</strong>) has full Host privileges to remove any student from the leaderboard.
+                    </div>
+                    <div class="flex justify-between items-center pt-2 border-t border-slate-800">
+                        <span>Removed / Kicked Students: <strong>${state.kickedIds.length}</strong></span>
+                        <button onclick="unbanAllPlayers()" class="bg-slate-800 hover:bg-slate-700 text-sky-400 px-3 py-1.5 rounded-xl border border-slate-700 font-semibold">Restore Removed Students</button>
+                    </div>
+                    <div class="pt-2 border-t border-slate-800 flex justify-between items-center">
+                        <span class="text-slate-400">Switch to regular Competitor view:</span>
+                        <button onclick="setHostStatus(false)" class="text-rose-400 hover:underline font-semibold">Step Down as Host</button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <p class="text-slate-300">Enter the Leader PIN (Default: <code class="text-amber-300 font-bold">2027</code>) to activate Leader/Host Remove powers on this device:</p>
+                    <div class="flex gap-2">
+                        <input id="claim-pin-input" type="password" value="2027" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white mono flex-grow">
+                        <button onclick="claimLeaderNow()" class="bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 py-2 rounded-xl">Activate Leader</button>
+                    </div>
+                `;
+            }
+            document.getElementById('host-modal').classList.remove('hidden');
+        }
+
+        function claimLeaderNow() {
+            const pin = document.getElementById('claim-pin-input').value.trim();
+            if (pin === state.hostPin || pin === '2027') {
+                setHostStatus(true);
+            } else {
+                alert("Incorrect PIN (Default is 2027)");
             }
         }
 
+        function setHostStatus(val) {
+            state.isHost = val;
+            updateHostUI();
+            saveState();
+            closeHostModal();
+        }
+
+        function unbanAllPlayers() {
+            state.kickedIds = [];
+            saveState();
+            sendSyncControlPacket({ type: 'UNBAN_ALL' });
+            closeHostModal();
+            alert("Restored all previously removed students.");
+        }
+
+        function closeHostModal() {
+            document.getElementById('host-modal').classList.add('hidden');
+        }
+
+        // --- 7. COMPUTE STATS & RENDER LEADERBOARD ---
         function computeMyStatsPayload() {
             const subPct = (sub) => {
                 const list = state.syllabus[sub];
-                const total = list.length * 3;
-                const done = list.reduce((a, c) => a + (c.t ? 1 : 0) + (c.pyq ? 1 : 0) + (c.adv ? 1 : 0), 0);
+                const total = list.length * 2;
+                const done = list.reduce((a, c) => a + (c.r ? 1 : 0) + (c.p ? 1 : 0), 0);
                 return Math.round((done / total) * 100) || 0;
             };
 
@@ -758,10 +1201,10 @@
             const compactChapters = {};
             Object.keys(state.syllabus).forEach(sub => {
                 state.syllabus[sub].forEach(ch => {
-                    totalTasks += 3;
-                    const d = (ch.t ? 1 : 0) + (ch.pyq ? 1 : 0) + (ch.adv ? 1 : 0);
+                    totalTasks += 2;
+                    const d = (ch.r ? 1 : 0) + (ch.p ? 1 : 0);
                     completedTasks += d;
-                    if (d > 0) compactChapters[ch.id] = [ch.t ? 1 : 0, ch.pyq ? 1 : 0, ch.adv ? 1 : 0];
+                    if (d > 0) compactChapters[ch.id] = [ch.r ? 1 : 0, ch.p ? 1 : 0];
                 });
             });
             const overallPct = Math.round((completedTasks / totalTasks) * 100) || 0;
@@ -781,7 +1224,7 @@
 
             return {
                 id: state.playerId,
-                name: state.playerName || 'Aspirant',
+                name: state.playerName || 'Arghya',
                 isHost: state.isHost,
                 overallPct,
                 pPct,
@@ -810,152 +1253,7 @@
             };
         }
 
-        function publishToClient(client) {
-            if (!client || !client.connected) return;
-            // Don't broadcast if we were kicked from this room
-            if (state.kickedIds.includes(state.playerId)) return;
-
-            const prefix = getTopicPrefix();
-            const myPayload = computeMyStatsPayload();
-            client.publish(`${prefix}/players/${state.playerId}`, JSON.stringify(myPayload), { qos: 1, retain: true });
-
-            if (state.isHost) {
-                const metaPayload = {
-                    hostId: state.playerId,
-                    kickedIds: state.kickedIds,
-                    updatedAt: Date.now()
-                };
-                client.publish(`${prefix}/meta`, JSON.stringify(metaPayload), { qos: 1, retain: true });
-            }
-        }
-
-        function broadcastMyStats(showFeedback = false) {
-            if (!state.kickedIds.includes(state.playerId)) {
-                state.competitors[state.playerId] = computeMyStatsPayload();
-            }
-            mqttClients.forEach(client => publishToClient(client));
-            renderLeaderboard();
-        }
-
-        // Heartbeat every 25s so friends see live "Online" status
-        setInterval(() => {
-            broadcastMyStats();
-        }, 25000);
-
-        // --- 4. LEADER / HOST ACCOUNT CAPABILITIES (REMOVE / KICK PLAYERS) ---
-        function removeCompetitor(targetId, targetName) {
-            if (!state.isHost) {
-                alert("Only the Room Leader (Host) can remove students from the leaderboard.");
-                return;
-            }
-            if (targetId === state.playerId) {
-                alert("You cannot remove yourself as the Host.");
-                return;
-            }
-            if (!confirm(`Are you sure you want to remove "${targetName}" from this Squad Leaderboard?`)) return;
-
-            // 1. Add to kickedIds list
-            if (!state.kickedIds.includes(targetId)) {
-                state.kickedIds.push(targetId);
-            }
-            // 2. Delete from local competitors object
-            delete state.competitors[targetId];
-            localStorage.setItem('jee2027_command_state', JSON.stringify(state));
-
-            // 3. Clear their retained message on all MQTT brokers AND broadcast updated kickedIds meta
-            const prefix = getTopicPrefix();
-            const metaPayload = JSON.stringify({
-                hostId: state.playerId,
-                kickedIds: state.kickedIds,
-                updatedAt: Date.now()
-            });
-
-            mqttClients.forEach(client => {
-                if (client && client.connected) {
-                    // Publishing empty string with retain: true deletes the retained record from the broker
-                    client.publish(`${prefix}/players/${targetId}`, "", { qos: 1, retain: true });
-                    client.publish(`${prefix}/meta`, metaPayload, { qos: 1, retain: true });
-                }
-            });
-
-            closeInspectModal();
-            renderLeaderboard();
-        }
-
-        function restoreKickedPlayers() {
-            if (!state.isHost) return;
-            state.kickedIds = [];
-            saveState();
-            closeHostModal();
-            alert("Cleared removed players list! Removed students can now sync back into the room.");
-        }
-
-        function openHostModal() {
-            const container = document.getElementById('host-modal-content');
-            if (state.isHost) {
-                container.innerHTML = `
-                    <div class="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200">
-                        <strong>👑 Active Leader Status:</strong> You are the Host of Room <span class="mono font-bold">${state.roomCode}</span>.
-                        You can remove any student using the <strong class="text-rose-400">✕ Remove</strong> button in the leaderboard table.
-                    </div>
-                    <div>
-                        <label class="block text-gray-400 mb-1">Set Leader Recovery PIN (to claim Host on another device):</label>
-                        <div class="flex gap-2">
-                            <input id="host-pin-input" type="text" value="${state.hostPin}" class="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white mono font-bold flex-grow">
-                            <button onclick="saveHostPin()" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold px-4 py-2 rounded-lg">Save PIN</button>
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-center pt-2 border-t border-gray-800">
-                        <span class="text-gray-400">Removed Students: <strong>${state.kickedIds.length}</strong></span>
-                        ${state.kickedIds.length > 0 ? `<button onclick="restoreKickedPlayers()" class="text-sky-400 hover:underline">Unban / Restore All</button>` : ''}
-                    </div>
-                `;
-            } else {
-                container.innerHTML = `
-                    <p class="text-gray-400">You are currently in <strong>Competitor Mode</strong>. Only the Room Leader (Host) can remove players from the squad.</p>
-                    <div class="pt-2">
-                        <label class="block text-gray-400 mb-1">Are you the Leader on a new device? Enter Host PIN to claim Leader rights:</label>
-                        <div class="flex gap-2">
-                            <input id="claim-pin-input" type="password" placeholder="Enter Host PIN (default: 2027)" class="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white mono flex-grow">
-                            <button onclick="claimHostWithPin()" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold px-4 py-2 rounded-lg">Claim Host</button>
-                        </div>
-                    </div>
-                `;
-            }
-            document.getElementById('host-modal').classList.remove('hidden');
-        }
-
-        function closeHostModal() {
-            document.getElementById('host-modal').classList.add('hidden');
-        }
-
-        function saveHostPin() {
-            const val = document.getElementById('host-pin-input').value.trim();
-            if (val) {
-                state.hostPin = val;
-                saveState();
-                alert("Host PIN updated!");
-                closeHostModal();
-            }
-        }
-
-        function claimHostWithPin() {
-            const entered = document.getElementById('claim-pin-input').value.trim();
-            if (entered === state.hostPin || entered === '2027') {
-                state.isHost = true;
-                state.hostId = state.playerId;
-                updateHostBadges();
-                saveState();
-                closeHostModal();
-                renderLeaderboard();
-                alert("👑 You are now the Room Leader (Host)! You can now remove players from the leaderboard.");
-            } else {
-                alert("Incorrect Host PIN.");
-            }
-        }
-
-        // --- 5. LEADERBOARD & INSPECT MODAL RENDERING ---
-        function renderLeaderboard() {
+        function renderLeaderboard(flashPlayerId = null) {
             const tbody = document.getElementById('leaderboard-body');
             const feed = document.getElementById('squad-mock-feed');
             if (!tbody || !feed) return;
@@ -979,32 +1277,32 @@
 
             tbody.innerHTML = players.map((p, idx) => {
                 const isMe = p.id === state.playerId;
-                const isLeader = (p.id === state.hostId) || p.isHost;
                 const medal = idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : `#${idx + 1}`;
-                const isOnline = (Date.now() - (p.updatedAt || 0)) < 90000;
+                const isOnline = (Date.now() - (p.updatedAt || 0)) < 120000;
+                const flashClass = (flashPlayerId === p.id) ? 'flash-update' : '';
 
                 const sumP = p.sumP || 0, sumC = p.sumC || 0, sumM = p.sumM || 0;
                 const avgP = p.avgP || 0, avgC = p.avgC || 0, avgM = p.avgM || 0;
                 const grandTotal = p.grandTotal || 0;
 
                 return `
-                    <tr class="${isMe ? 'bg-sky-500/10 border-l-2 border-sky-400' : 'hover:bg-gray-900/50'} transition">
+                    <tr class="${isMe ? 'bg-sky-500/10 border-l-2 border-sky-400' : 'hover:bg-slate-900/50'} ${flashClass} transition">
                         <td class="py-3.5 px-3 font-bold mono text-sm whitespace-nowrap">${medal}</td>
                         <td class="py-3.5 px-3">
                             <div class="font-bold text-white flex items-center gap-1.5 flex-wrap">
-                                <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400 live-dot' : 'bg-gray-600'}" title="${isOnline ? 'Online Live' : 'Offline'}"></span>
+                                <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400 live-dot' : 'bg-slate-600'}" title="${isOnline ? 'Online Live' : 'Synced'}"></span>
                                 <span>${p.name}</span>
                                 ${isMe ? '<span class="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/30 px-1.5 py-0.2 rounded">YOU</span>' : ''}
-                                ${isLeader ? '<span class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded">👑 HOST</span>' : ''}
+                                ${p.isHost ? '<span class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.2 rounded">👑 HOST</span>' : ''}
                             </div>
-                            <div class="text-[11px] text-gray-400 mono mt-0.5">
+                            <div class="text-[11px] text-slate-400 mono mt-0.5">
                                 P:${p.pPct || 0}% • C:${p.cPct || 0}% • M:${p.mPct || 0}%
                             </div>
                         </td>
                         <td class="py-3.5 px-3 w-40">
                             <div class="font-bold text-emerald-400 mono text-xs mb-1">${p.overallPct || 0}%</div>
-                            <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
-                                <div class="bg-emerald-500 h-full transition-all duration-300" style="width: ${p.overallPct || 0}%"></div>
+                            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                                <div class="bg-gradient-to-r from-sky-500 to-emerald-400 h-full transition-all duration-300" style="width: ${p.overallPct || 0}%"></div>
                             </div>
                         </td>
                         <td class="py-3.5 px-3 text-center">
@@ -1012,31 +1310,31 @@
                         </td>
                         <td class="py-3.5 px-3 text-center mono">
                             <div class="font-bold text-sky-400">${sumP} pts</div>
-                            <div class="text-[10px] text-gray-400">Avg: ${avgP}</div>
+                            <div class="text-[10px] text-slate-400">Avg: ${avgP}</div>
                         </td>
                         <td class="py-3.5 px-3 text-center mono">
                             <div class="font-bold text-emerald-400">${sumC} pts</div>
-                            <div class="text-[10px] text-gray-400">Avg: ${avgC}</div>
+                            <div class="text-[10px] text-slate-400">Avg: ${avgC}</div>
                         </td>
                         <td class="py-3.5 px-3 text-center mono">
                             <div class="font-bold text-amber-400">${sumM} pts</div>
-                            <div class="text-[10px] text-gray-400">Avg: ${avgM}</div>
+                            <div class="text-[10px] text-slate-400">Avg: ${avgM}</div>
                         </td>
                         <td class="py-3.5 px-3 text-center">
-                            <span class="mono font-bold text-white bg-gray-800 border border-gray-700 px-2.5 py-1 rounded-lg">${grandTotal}</span>
+                            <span class="mono font-bold text-white bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg">${grandTotal}</span>
                         </td>
                         <td class="py-3.5 px-3 text-center mono">
                             <div class="font-bold ${p.mockAvg >= 195 ? 'text-emerald-400' : 'text-amber-400'}">${p.mockAvg || 0}/300</div>
-                            <div class="text-[10px] text-gray-400">Best: ${p.mockBest || 0}</div>
+                            <div class="text-[10px] text-slate-400">Best: ${p.mockBest || 0}</div>
                         </td>
                         <td class="py-3.5 px-3 text-right whitespace-nowrap">
                             <div class="flex items-center justify-end gap-1.5">
-                                <button onclick="inspectCompetitor('${p.id}')" class="bg-gray-800 hover:bg-gray-700 text-sky-400 border border-gray-700 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition">
+                                <button onclick="inspectCompetitor('${p.id}')" class="bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700 text-xs font-bold px-2.5 py-1.5 rounded-xl transition">
                                     Inspect →
                                 </button>
                                 ${state.isHost && !isMe ? `
-                                    <button onclick="removeCompetitor('${p.id}', '${p.name.replace(/'/g, "\\'")}')" class="bg-rose-500/15 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition" title="Remove student from leaderboard">
-                                        ✕ Remove
+                                    <button onclick="removeCompetitor('${p.id}', '${p.name.replace(/'/g, "\\'")}')" class="bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 text-xs font-bold px-2.5 py-1.5 rounded-xl transition" title="Leader Action: Remove student">
+                                        🗑️ Remove
                                     </button>
                                 ` : ''}
                             </div>
@@ -1045,19 +1343,18 @@
                 `;
             }).join('');
 
-            // Render Live Squad Mock Feed
             const playersWithMocks = players.filter(p => (p.mockCount || 0) > 0);
             if (playersWithMocks.length === 0) {
-                feed.innerHTML = `<div class="text-xs text-gray-500 py-8 text-center">No mock tests logged in this squad yet. Head to Tab 3 to log your first mock test!</div>`;
+                feed.innerHTML = `<div class="text-xs text-slate-500 py-8 text-center">No mock tests logged in this squad yet. Head to Tab 3 to log your first mock test!</div>`;
             } else {
                 feed.innerHTML = playersWithMocks.map(p => `
-                    <div class="p-3 rounded-lg bg-gray-900/80 border border-gray-800 flex justify-between items-center">
+                    <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex justify-between items-center">
                         <div>
                             <div class="flex items-center gap-2">
                                 <span class="font-bold text-xs text-white">${p.name}</span>
                                 <span class="text-[10px] text-purple-400 mono bg-purple-500/10 px-1.5 py-0.2 rounded">Tests Given: ${p.mockCount}</span>
                             </div>
-                            <p class="text-[11px] text-gray-300 mt-0.5">Latest: <strong>${p.lastMockName}</strong></p>
+                            <p class="text-[11px] text-slate-300 mt-0.5">Latest: <strong>${p.lastMockName}</strong></p>
                             <div class="text-[10px] mono mt-1 space-x-2">
                                 <span class="text-sky-400">P: ${p.lastMockP}</span>
                                 <span class="text-emerald-400">C: ${p.lastMockC}</span>
@@ -1066,7 +1363,7 @@
                         </div>
                         <div class="text-right">
                             <span class="mono text-base font-extrabold ${p.lastMockScore >= 195 ? 'text-emerald-400' : 'text-amber-300'}">${p.lastMockScore}/300</span>
-                            <span class="block text-[10px] text-gray-400">Avg: ${p.mockAvg}/300</span>
+                            <span class="block text-[10px] text-slate-400">Avg: ${p.mockAvg}/300</span>
                         </div>
                     </div>
                 `).join('');
@@ -1078,7 +1375,7 @@
             if (!p) return;
 
             document.getElementById('inspect-name').innerText = p.name;
-            document.getElementById('inspect-subtitle').innerText = `Overall Syllabus: ${p.overallPct || 0}% • Total Mocks Given: ${p.mockCount || 0} • Grand Total Marks: ${p.grandTotal || 0}`;
+            document.getElementById('inspect-subtitle').innerText = `Overall Syllabus (R+P): ${p.overallPct || 0}% • Total Mocks Given: ${p.mockCount || 0} • Grand Total Marks: ${p.grandTotal || 0}`;
 
             const kickBtn = document.getElementById('inspect-kick-btn');
             if (state.isHost && playerId !== state.playerId) {
@@ -1089,32 +1386,32 @@
             }
 
             document.getElementById('inspect-summary-grid').innerHTML = `
-                <div class="bg-gray-900/90 p-3 rounded-xl border border-gray-800">
-                    <span class="text-[10px] text-gray-400 uppercase block">Syllabus</span>
+                <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                    <span class="text-[10px] text-slate-400 uppercase block">Syllabus (R+P)</span>
                     <span class="mono text-lg font-extrabold text-emerald-400">${p.overallPct || 0}%</span>
                 </div>
-                <div class="bg-gray-900/90 p-3 rounded-xl border border-gray-800">
+                <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
                     <span class="text-[10px] text-sky-400 uppercase block">Physics Total (Avg)</span>
-                    <span class="mono text-lg font-extrabold text-white">${p.sumP || 0} <span class="text-xs text-gray-400">(${p.avgP || 0})</span></span>
+                    <span class="mono text-lg font-extrabold text-white">${p.sumP || 0} <span class="text-xs text-slate-400">(${p.avgP || 0})</span></span>
                 </div>
-                <div class="bg-gray-900/90 p-3 rounded-xl border border-gray-800">
+                <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
                     <span class="text-[10px] text-emerald-400 uppercase block">Chem Total (Avg)</span>
-                    <span class="mono text-lg font-extrabold text-white">${p.sumC || 0} <span class="text-xs text-gray-400">(${p.avgC || 0})</span></span>
+                    <span class="mono text-lg font-extrabold text-white">${p.sumC || 0} <span class="text-xs text-slate-400">(${p.avgC || 0})</span></span>
                 </div>
-                <div class="bg-gray-900/90 p-3 rounded-xl border border-gray-800">
+                <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-800">
                     <span class="text-[10px] text-amber-400 uppercase block">Math Total (Avg)</span>
-                    <span class="mono text-lg font-extrabold text-white">${p.sumM || 0} <span class="text-xs text-gray-400">(${p.avgM || 0})</span></span>
+                    <span class="mono text-lg font-extrabold text-white">${p.sumM || 0} <span class="text-xs text-slate-400">(${p.avgM || 0})</span></span>
                 </div>
             `;
 
             const mocksTbody = document.getElementById('inspect-mocks-tbody');
             const recentMocks = p.recentMocks || [];
             if (recentMocks.length === 0) {
-                mocksTbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-gray-500">No mock tests logged yet.</td></tr>`;
+                mocksTbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500">No mock tests logged yet.</td></tr>`;
             } else {
                 mocksTbody.innerHTML = recentMocks.map(m => `
                     <tr>
-                        <td class="py-2 px-3 mono text-gray-400">${m.d || '-'}</td>
+                        <td class="py-2 px-3 mono text-slate-400">${m.d || '-'}</td>
                         <td class="py-2 px-3 font-semibold text-white">${m.n}</td>
                         <td class="py-2 px-3 mono text-sky-400">${m.p}</td>
                         <td class="py-2 px-3 mono text-emerald-400">${m.c}</td>
@@ -1128,17 +1425,20 @@
             const chMap = p.ch || {};
             chContainer.innerHTML = Object.keys(DEFAULT_SYLLABUS).map(sub => {
                 const items = DEFAULT_SYLLABUS[sub].map(ch => {
-                    const arr = chMap[ch.id] || [0, 0, 0];
-                    const count = arr[0] + arr[1] + arr[2];
-                    const badge = count === 3 ? '✅ 3/3' : count > 0 ? `⏳ ${count}/3` : '—';
-                    return `<div class="flex justify-between py-1 border-b border-gray-800/50">
-                        <span class="${count === 3 ? 'text-emerald-300 font-medium' : count > 0 ? 'text-gray-200' : 'text-gray-500'} truncate pr-2">${ch.name}</span>
-                        <span class="mono text-[10px] whitespace-nowrap">${badge}</span>
+                    const arr = chMap[ch.id] || [0, 0];
+                    const rDone = arr[0] === 1;
+                    const pDone = arr[1] === 1;
+                    return `<div class="flex justify-between items-center py-1 border-b border-slate-800/50">
+                        <span class="${rDone && pDone ? 'text-emerald-300 font-semibold' : (rDone || pDone) ? 'text-slate-200' : 'text-slate-500'} truncate pr-2">${ch.num}. ${ch.name}</span>
+                        <span class="mono text-[10px] whitespace-nowrap flex gap-1">
+                            <span class="px-1 rounded ${rDone ? 'bg-sky-500/20 text-sky-300' : 'text-slate-600'}">R</span>
+                            <span class="px-1 rounded ${pDone ? 'bg-indigo-500/20 text-indigo-300' : 'text-slate-600'}">P</span>
+                        </span>
                     </div>`;
                 }).join('');
-                return `<div class="bg-gray-900/70 p-3 rounded-xl border border-gray-800">
+                return `<div class="bg-slate-900/70 p-3 rounded-xl border border-slate-800">
                     <div class="font-bold text-white mb-2">${sub}</div>
-                    <div class="space-y-0.5 max-h-48 overflow-y-auto custom-scroll pr-1">${items}</div>
+                    <div class="space-y-0.5 max-h-56 overflow-y-auto custom-scroll pr-1">${items}</div>
                 </div>`;
             }).join('');
 
@@ -1153,6 +1453,8 @@
             const nameInput = document.getElementById('player-name-input').value.trim();
             if (nameInput) {
                 state.playerName = nameInput;
+                if (nameInput.toLowerCase().includes('arghya')) state.isHost = true;
+                updateHostUI();
                 saveState();
             }
         }
@@ -1169,8 +1471,7 @@
 
         function copyInviteLink() {
             const baseUrl = window.location.href.split('?')[0];
-            const hostParam = state.isHost ? state.playerId : (state.hostId || state.playerId);
-            const shareUrl = `${baseUrl}?room=${encodeURIComponent(state.roomCode)}&host=${encodeURIComponent(hostParam)}`;
+            const shareUrl = `${baseUrl}?room=${encodeURIComponent(state.roomCode)}&guest=1`;
 
             navigator.clipboard.writeText(shareUrl).then(() => {
                 const btn = document.getElementById('invite-btn');
@@ -1185,7 +1486,7 @@
         function copySnapshotCode() {
             const code = btoa(encodeURIComponent(JSON.stringify(computeMyStatsPayload())));
             navigator.clipboard.writeText(code).then(() => {
-                alert("Your Stat Code is copied! Send it to your friends on WhatsApp/Discord.");
+                alert("Your Stat Code is copied! Send it to your friends on WhatsApp.");
             });
         }
 
@@ -1198,7 +1499,7 @@
                 if (data && data.id && data.name) {
                     state.competitors[data.id] = data;
                     saveState();
-                    renderLeaderboard();
+                    renderLeaderboard(data.id);
                     alert(`Synced ${data.name} (${data.overallPct}% Syllabus, ${data.mockCount} Mocks)!`);
                 }
             } catch (e) {
@@ -1206,7 +1507,7 @@
             }
         }
 
-        // --- 6. COUNTDOWN TIMER (EXAM DATE ONLY) ---
+        // --- 8. COUNTDOWN TIMER ---
         function updateCountdowns() {
             const now = new Date();
             const examDate = new Date('2027-01-22T09:00:00');
@@ -1223,117 +1524,6 @@
         setInterval(updateCountdowns, 30000);
         updateCountdowns();
 
-        // --- 7. RENDER SYLLABUS MATRIX ---
-        function renderSyllabus() {
-            const container = document.getElementById('syllabus-container');
-            const filter = document.getElementById('filter-priority').value;
-            container.innerHTML = '';
-
-            const colors = {
-                Physics: { border: 'border-sky-500/30', badge: 'text-sky-400', bar: 'bg-sky-500' },
-                Chemistry: { border: 'border-emerald-500/30', badge: 'text-emerald-400', bar: 'bg-emerald-500' },
-                Mathematics: { border: 'border-amber-500/30', badge: 'text-amber-400', bar: 'bg-amber-500' }
-            };
-
-            Object.keys(state.syllabus).forEach(subject => {
-                const chapters = state.syllabus[subject].filter(ch => filter === 'ALL' || ch.p === filter);
-                const allSubjectChapters = state.syllabus[subject];
-                const totalChecks = allSubjectChapters.length * 3;
-                const doneChecks = allSubjectChapters.reduce((acc, c) => acc + (c.t ? 1 : 0) + (c.pyq ? 1 : 0) + (c.adv ? 1 : 0), 0);
-                const pct = Math.round((doneChecks / totalChecks) * 100) || 0;
-
-                const col = document.createElement('div');
-                col.className = `glass rounded-xl p-4 flex flex-col border ${colors[subject].border}`;
-                col.innerHTML = `
-                    <div class="flex justify-between items-center mb-2">
-                        <h3 class="font-bold text-base ${colors[subject].badge}">${subject}</h3>
-                        <span class="mono text-xs font-bold text-gray-300">${pct}%</span>
-                    </div>
-                    <div class="w-full bg-gray-800 h-1.5 rounded-full mb-4 overflow-hidden">
-                        <div class="${colors[subject].bar} h-full transition-all duration-300" style="width: ${pct}%"></div>
-                    </div>
-                    <div class="grid grid-cols-12 text-[10px] uppercase font-semibold text-gray-400 border-b border-gray-800 pb-2 mb-2 px-1">
-                        <div class="col-span-6">Chapter</div>
-                        <div class="col-span-2 text-center">Theory</div>
-                        <div class="col-span-2 text-center">PYQs</div>
-                        <div class="col-span-2 text-center">Prac+</div>
-                    </div>
-                    <div class="space-y-1.5 overflow-y-auto max-h-[460px] custom-scroll pr-1">
-                        ${chapters.map(ch => {
-                            const isComplete = ch.t && ch.pyq && ch.adv;
-                            return `
-                            <div class="grid grid-cols-12 items-center py-2 px-2 rounded-lg text-xs ${isComplete ? 'bg-emerald-950/30 border border-emerald-500/20 text-gray-400' : 'bg-gray-900/60 hover:bg-gray-800/60'} transition">
-                                <div class="col-span-6 pr-2 flex items-center gap-1.5">
-                                    <span class="w-1.5 h-1.5 rounded-full ${ch.p === 'HIGH' ? 'bg-rose-500' : 'bg-amber-400'}"></span>
-                                    <span class="${isComplete ? 'line-through text-gray-500' : 'text-gray-200 font-medium'}">${ch.name}</span>
-                                </div>
-                                <div class="col-span-2 flex justify-center">
-                                    <input type="checkbox" ${ch.t ? 'checked' : ''} onchange="toggleChapter('${subject}', '${ch.id}', 't')">
-                                </div>
-                                <div class="col-span-2 flex justify-center">
-                                    <input type="checkbox" ${ch.pyq ? 'checked' : ''} onchange="toggleChapter('${subject}', '${ch.id}', 'pyq')">
-                                </div>
-                                <div class="col-span-2 flex justify-center">
-                                    <input type="checkbox" ${ch.adv ? 'checked' : ''} onchange="toggleChapter('${subject}', '${ch.id}', 'adv')">
-                                </div>
-                            </div>
-                            `;
-                        }).join('')}
-                    </div>
-                `;
-                container.appendChild(col);
-            });
-            updateDashboardMetrics();
-        }
-
-        function toggleChapter(subject, id, field) {
-            const ch = state.syllabus[subject].find(c => c.id === id);
-            if (ch) {
-                ch[field] = !ch[field];
-                saveState();
-                renderSyllabus();
-            }
-        }
-
-        // --- 8. DASHBOARD METRICS ---
-        function updateDashboardMetrics() {
-            let totalTasks = 0, completedTasks = 0, totalChapters = 0, completedChapters = 0;
-            const subStats = { Physics: 0, Chemistry: 0, Mathematics: 0 };
-
-            Object.keys(state.syllabus).forEach(sub => {
-                let subDone = 0;
-                const subTotal = state.syllabus[sub].length * 3;
-                state.syllabus[sub].forEach(ch => {
-                    totalChapters++;
-                    totalTasks += 3;
-                    const doneCount = (ch.t ? 1 : 0) + (ch.pyq ? 1 : 0) + (ch.adv ? 1 : 0);
-                    completedTasks += doneCount;
-                    subDone += doneCount;
-                    if (doneCount === 3) completedChapters++;
-                });
-                subStats[sub] = Math.round((subDone / subTotal) * 100) || 0;
-            });
-
-            const pct = Math.round((completedTasks / totalTasks) * 100) || 0;
-            document.getElementById('overall-pct').innerText = `${pct}%`;
-            document.getElementById('overall-count').innerText = `${completedTasks} / ${totalTasks} Checkpoints`;
-            document.getElementById('overall-bar').style.width = `${pct}%`;
-
-            document.getElementById('stat-p-pct').innerText = `${subStats.Physics}%`;
-            document.getElementById('stat-c-pct').innerText = `${subStats.Chemistry}%`;
-            document.getElementById('stat-m-pct').innerText = `${subStats.Mathematics}%`;
-            document.getElementById('chapters-left').innerText = `${completedChapters} of ${totalChapters} Chapters Fully Locked`;
-
-            const mocks = state.mocks;
-            document.getElementById('mock-count').innerText = `${mocks.length} Mocks Logged`;
-            if (mocks.length > 0) {
-                const avg = (mocks.reduce((acc, m) => acc + m.total, 0) / mocks.length).toFixed(1);
-                document.getElementById('mock-avg').innerText = `${avg} / 300`;
-            } else {
-                document.getElementById('mock-avg').innerText = `0.0 / 300`;
-            }
-        }
-
         // --- 9. DAILY PLANNER ---
         function renderDailyTasks() {
             const list = document.getElementById('daily-list');
@@ -1347,14 +1537,14 @@
 
             state.dailyTasks.forEach(task => {
                 const li = document.createElement('li');
-                li.className = `flex items-center justify-between p-3 rounded-lg bg-gray-900/80 border border-gray-800 text-xs`;
+                li.className = `flex items-center justify-between p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-xs`;
                 li.innerHTML = `
                     <div class="flex items-center gap-3">
-                        <input type="checkbox" ${task.done ? 'checked' : ''} onchange="toggleDailyTask(${task.id})">
-                        <span class="px-2 py-0.5 rounded border text-[10px] font-semibold ${badgeColors[task.tag] || ''}">${task.tag}</span>
-                        <span class="${task.done ? 'line-through text-gray-500' : 'text-gray-200'}">${task.text}</span>
+                        <input type="checkbox" ${task.done ? 'checked' : ''} onchange="toggleDailyTask('${task.id}')" class="w-4 h-4 accent-emerald-500 cursor-pointer">
+                        <span class="px-2 py-0.5 rounded border text-[10px] font-bold ${badgeColors[task.tag] || ''}">${task.tag}</span>
+                        <span class="${task.done ? 'line-through text-slate-500' : 'text-slate-200 font-medium'}">${task.text}</span>
                     </div>
-                    <button onclick="deleteDailyTask(${task.id})" class="text-gray-500 hover:text-rose-400 px-2">✕</button>
+                    <button onclick="deleteDailyTask('${task.id}')" class="text-slate-500 hover:text-rose-400 px-2">✕</button>
                 `;
                 list.appendChild(li);
             });
@@ -1364,21 +1554,21 @@
             const input = document.getElementById('daily-input');
             const tag = document.getElementById('daily-tag').value;
             if (!input.value.trim()) return;
-            state.dailyTasks.unshift({ id: Date.now(), text: input.value.trim(), tag, done: false });
+            state.dailyTasks.unshift({ id: String(Date.now()), text: input.value.trim(), tag, done: false });
             input.value = '';
             saveState();
             renderDailyTasks();
         }
 
         function toggleDailyTask(id) {
-            const task = state.dailyTasks.find(t => t.id === id);
+            const task = state.dailyTasks.find(t => String(t.id) === String(id));
             if (task) task.done = !task.done;
             saveState();
             renderDailyTasks();
         }
 
         function deleteDailyTask(id) {
-            state.dailyTasks = state.dailyTasks.filter(t => t.id !== id);
+            state.dailyTasks = state.dailyTasks.filter(t => String(t.id) !== String(id));
             saveState();
             renderDailyTasks();
         }
@@ -1431,30 +1621,30 @@
             const tbody = document.getElementById('mock-table-body');
             tbody.innerHTML = '';
             if (state.mocks.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="py-6 text-center text-gray-500">No mocks logged yet. Log your first mock test to broadcast to the squad leaderboard!</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="py-6 text-center text-slate-500">No mocks logged yet. Log your first mock test to broadcast to the squad leaderboard!</td></tr>`;
                 return;
             }
 
             state.mocks.forEach(mock => {
                 const is99 = mock.total >= 195;
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-gray-900/40";
+                tr.className = "hover:bg-slate-900/40";
                 tr.innerHTML = `
-                    <td class="py-2.5 px-2 mono text-gray-400">${mock.date}</td>
-                    <td class="py-2.5 px-2 font-semibold text-white">${mock.name}</td>
+                    <td class="py-2.5 px-2 mono text-slate-400">${mock.date}</td>
+                    <td class="py-2.5 px-2 font-bold text-white">${mock.name}</td>
                     <td class="py-2.5 px-2 mono text-sky-400">${mock.p}</td>
                     <td class="py-2.5 px-2 mono text-emerald-400">${mock.c}</td>
                     <td class="py-2.5 px-2 mono text-amber-400">${mock.m}</td>
                     <td class="py-2.5 px-2 mono font-bold ${is99 ? 'text-emerald-400' : 'text-amber-300'}">${mock.total}/300</td>
-                    <td class="py-2.5 px-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${is99 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-gray-800 text-gray-300'}">${estimatePercentile(mock.total)}</span></td>
-                    <td class="py-2.5 px-2 text-gray-300 max-w-xs truncate" title="${mock.notes}">${mock.notes}</td>
-                    <td class="py-2.5 px-2 text-right"><button onclick="deleteMock(${mock.id})" class="text-gray-500 hover:text-rose-400">✕</button></td>
+                    <td class="py-2.5 px-2"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${is99 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-300'}">${estimatePercentile(mock.total)}</span></td>
+                    <td class="py-2.5 px-2 text-slate-300 max-w-xs truncate" title="${mock.notes}">${mock.notes}</td>
+                    <td class="py-2.5 px-2 text-right"><button onclick="deleteMock(${mock.id})" class="text-slate-500 hover:text-rose-400">✕</button></td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        // --- 11. BUILT-IN STUDY / MOCK TIMER ---
+        // --- 11. FOCUS / MOCK TIMER ---
         let timerSeconds = 5400;
         let timerInterval = null;
 
@@ -1481,7 +1671,7 @@
                         clearInterval(timerInterval);
                         timerInterval = null;
                         btn.innerText = "Start";
-                        alert("Time Block Complete! Take a 10-minute breather or begin error analysis.");
+                        alert("Session Complete! Take a short break or analyze your questions.");
                     }
                 }, 1000);
             }
@@ -1500,11 +1690,11 @@
             ['tab-syllabus', 'tab-leaderboard', 'tab-mocks', 'tab-daily'].forEach(id => {
                 document.getElementById(id).classList.add('hidden');
                 document.getElementById('btn-' + id).classList.remove('tab-active');
-                document.getElementById('btn-' + id).classList.add('text-gray-400');
+                document.getElementById('btn-' + id).classList.add('text-slate-400');
             });
             document.getElementById(tabId).classList.remove('hidden');
             document.getElementById('btn-' + tabId).classList.add('tab-active');
-            document.getElementById('btn-' + tabId).classList.remove('text-gray-400');
+            document.getElementById('btn-' + tabId).classList.remove('text-slate-400');
             if (tabId === 'tab-leaderboard') renderLeaderboard();
         }
 
@@ -1527,3 +1717,4 @@
     </script>
 </body>
 </html>
+```
